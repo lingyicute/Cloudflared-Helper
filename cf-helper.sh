@@ -1,11 +1,28 @@
 #!/bin/bash
 
 # ==============================================================================
-#  cf-helper.sh - Cloudflared 连接助手 (v3.2)
+#  cf-helper.sh - Cloudflared 连接助手 (v3.3)
+#  - 增加了对端口号作为第二个命令行参数的支持
+#  - 为 curl/wget 下载增加了进度条
+#  - 增加了 --help 帮助信息
 # ==============================================================================
 
 set -e
 set -u
+
+# 0. 显示帮助信息
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    echo "Cloudflared 连接助手 (cf-helper.sh)"
+    echo ""
+    echo "用法: ./cf-helper.sh [HOSTNAME] [PORT]"
+    echo ""
+    echo "参数:"
+    echo "  HOSTNAME   (可选) 您要连接的隧道地址 (e.g., tunnel.example.com)。"
+    echo "  PORT       (可选) 本地监听的TCP端口。如果未提供，默认为 21128。"
+    echo ""
+    echo "如果未提供任何参数，脚本将以交互模式启动，依次询问所需信息。"
+    exit 0
+fi
 
 # 1. 确定当前设备架构
 ARCH=$(uname -m)
@@ -34,10 +51,11 @@ if [ "$KNOWN_ARCH" = true ]; then
             DOWNLOAD_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/$CLOUDFLARED_BINARY"
             echo "正在从 $DOWNLOAD_URL 下载..."
 
+            # 为下载工具增加了进度条显示
             if command -v curl &> /dev/null; then
-                curl -L -o "$CLOUDFLARED_BINARY" "$DOWNLOAD_URL"
+                curl -L --progress-bar -o "$CLOUDFLARED_BINARY" "$DOWNLOAD_URL"
             elif command -v wget &> /dev/null; then
-                wget -O "$CLOUDFLARED_BINARY" "$DOWNLOAD_URL"
+                wget -q --show-progress -O "$CLOUDFLARED_BINARY" "$DOWNLOAD_URL"
             else
                 echo "错误：需要 curl 或 wget 来下载文件，但两者都未安装。" >&2
                 exit 1
@@ -62,7 +80,6 @@ else
     mapfile -d '' CANDIDATES < <(find . -maxdepth 1 -name 'cloudflared*' -type f -print0)
 
     if [ "${#CANDIDATES[@]}" -eq 1 ]; then
-        # 从 find 的结果中提取文件名，它本身已包含 ./ 路径
         CLOUDFLARED_BINARY="${CANDIDATES[0]}"
         echo "成功！已找到并选择二进制文件: $CLOUDFLARED_BINARY"
     elif [ "${#CANDIDATES[@]}" -gt 1 ]; then
@@ -78,7 +95,6 @@ else
 fi
 
 # 3. 最终检查并确保文件可执行
-# 此时，CLOUDFLARED_BINARY 变量必须有值且指向一个文件
 if [ -z "$CLOUDFLARED_BINARY" ] || [ ! -f "$CLOUDFLARED_BINARY" ]; then
    echo "严重错误：未能定位到可用的 cloudflared 二进制文件。" >&2
    exit 1
@@ -93,7 +109,6 @@ if [ ! -x "$CLOUDFLARED_BINARY" ]; then
     fi
 fi
 
-# 如果变量不包含路径，为其添加 ./ 前缀，确保执行的确定性
 if [[ "$CLOUDFLARED_BINARY" != ./* && "$CLOUDFLARED_BINARY" != /* ]]; then
     CLOUDFLARED_BINARY="./$CLOUDFLARED_BINARY"
 fi
@@ -103,18 +118,16 @@ echo "脚本已启动，将使用 '$CLOUDFLARED_BINARY' 执行连接。"
 echo ""
 
 # 4. 获取连接参数
-read -p "请输入本地监听端口［21128］： " PORT
-PORT=${PORT:-21128}
 
 # 优先从命令行第一个参数 ($1) 获取 HOSTNAME
-# 使用 ${1:-} 结构：如果 $1 存在且不为空，则使用 $1 的值，否则为空字符串。这能安全地配合 `set -u`
 HOSTNAME="${1:-}"
+# 优先从命令行第二个参数 ($2) 获取 PORT
+PORT="${2:-}"
 
 if [ -z "$HOSTNAME" ]; then
     # 如果命令行没有提供 HOSTNAME，则交互式询问
     read -p "请输入隧道地址 (hostname): " HOSTNAME
 else
-    # 如果从命令行获取了 HOSTNAME，则打印出来确认
     echo "已从命令行参数获取隧道地址: $HOSTNAME"
 fi
 
@@ -124,8 +137,16 @@ if [ -z "$HOSTNAME" ]; then
     exit 1
 fi
 
+if [ -z "$PORT" ]; then
+    # 如果命令行没有提供 PORT，则交互式询问
+    read -p "请输入本地监听端口 [21128]: " PORT
+    PORT=${PORT:-21128} # 如果用户直接回车，则使用默认值
+else
+    echo "已从命令行参数获取本地监听端口: $PORT"
+fi
+
 # 5. 执行最终命令
 echo ""
 echo "［已使用 '$CLOUDFLARED_BINARY' 执行连接命令，以下是程序的输出］"
 echo "----------------------------------------------------"
-exec "$CLOUDFLARED_BINARY" access tcp --listener 127.0.0.1:$PORT --hostname "$HOSTNAME"
+exec "$CLOUDFLARED_BINARY" access tcp --listener "127.0.0.1:$PORT" --hostname "$HOSTNAME"
