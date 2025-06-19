@@ -26,14 +26,15 @@ jobs:
       - name: Setup Build Environment
         id: setup
         run: |
-          echo "ARCHS=(linux-amd64 linux-arm64 linux-arm)" >> $GITHUB_ENV
+
+          echo "ARCHS=linux-amd64 linux-arm64 linux-arm" >> $GITHUB_ENV
           mkdir -p release_assets
 
       # 步骤三：下载、打包并准备发行版文件
       # 循环处理每一种架构
       - name: Download, Package, and Prepare Assets
         run: |
-          for arch in ${ARCHS[@]}; do
+          for arch in $ARCHS; do
             # 提取架构的简称 (amd64, arm64, arm)
             short_arch=$(echo "$arch" | sed 's/linux-//')
 
@@ -41,7 +42,7 @@ jobs:
 
             # 1. 下载对应架构的 cloudflared 二进制文件
             echo "Downloading cloudflared for ${arch}..."
-            curl -L --progress-bar "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-${arch}" -o "cloudflared-${arch}"
+            curl -L --fail --progress-bar "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-${arch}" -o "cloudflared-${arch}"
             if [ $? -ne 0 ]; then
               echo "Error: Download failed for ${arch}"
               exit 1
@@ -54,8 +55,12 @@ jobs:
             # 3. 复制脚本和二进制文件到打包目录
             cp cf-helper.sh "${PKG_DIR}/"
             mv "cloudflared-${arch}" "${PKG_DIR}/"
+
+            # 4. 在打包前为脚本添加可执行权限
+            echo "Setting execute permission on cf-helper.sh"
+            chmod +x "${PKG_DIR}/cf-helper.sh"
             
-            # 4. 创建 .tar.gz 压缩包
+            # 5. 创建 .tar.gz 压缩包
             TAR_NAME="cf-helper-${short_arch}.tar.gz"
             echo "Creating package: ${TAR_NAME}..."
             tar -czvf "release_assets/${TAR_NAME}" "${PKG_DIR}"
@@ -65,7 +70,6 @@ jobs:
           done
 
       # 步骤四：创建 Release 并上传打包好的文件
-      # 使用社区广受好评的 softprops/action-gh-release 动作
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
@@ -78,7 +82,7 @@ jobs:
             自动构建的发行版 v${{ github.run_number }}
 
             此版本包含了适用于不同 CPU 架构的 `cloudflared` 二进制文件和 `cf-helper.sh` 脚本。
-            下载后解压即可使用。
+            下载后解压即可使用 (`cf-helper.sh` 已包含可执行权限)。
 
             **包含的附件:**
             - `cf-helper-amd64.tar.gz`: 适用于标准 x86_64 架构的桌面/服务器 (Intel/AMD)
