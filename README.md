@@ -22,6 +22,18 @@
     * 提供标准的 `-h` 或 `--help` 帮助信息，方便随时查阅。
     * 在执行的每一步都提供明确的状态反馈或错误信息，让您清楚地知道发生了什么。
 
+## 下载
+
+您可以从下方的链接直接下载最新版本的打包发行版。这些文件由 GitHub Actions 自动构建，包含了助手脚本和对应架构的 `cloudflared` 程序。下载后解压即可使用。
+
+| 架构 | 描述 | 下载链接 |
+| :--- | :--- | :--- |
+| **x86_64 / amd64** | 适用于绝大多数64位桌面电脑和服务器 (Intel/AMD) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-amd64.tar.gz) |
+| **aarch64 / arm64** | 适用于64位ARM设备 (如 树莓派3/4/5, M1/M2/M3 Mac 等) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm64.tar.gz) |
+| **arm / armv7l** | 适用于32位ARM设备 (如 旧版树莓派) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm.tar.gz) |
+
+您也可以访问 [**Releases 页面**](https://github.com/lingyicute/Cloudflared-Helper/releases)。
+
 ## 环境要求
 
 * `bash`
