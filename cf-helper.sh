@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # ==============================================================================
-#  cf-helper.sh - Cloudflared 连接助手 (v3.1)
+#  cf-helper.sh - Cloudflared 连接助手 (v3.2)
 # ==============================================================================
+
+set -e
+set -u
 
 # 1. 确定当前设备架构
 ARCH=$(uname -m)
@@ -40,9 +43,9 @@ if [ "$KNOWN_ARCH" = true ]; then
                 exit 1
             fi
 
-            if [ $? -ne 0 ]; then
-                echo "错误：下载失败。请检查网络连接。" >&2
-                rm -f "$CLOUDFLARED_BINARY"
+            # 下载后再次检查是否成功
+            if [ ! -f "$CLOUDFLARED_BINARY" ]; then
+                echo "错误：下载失败。请检查网络连接或下载链接。" >&2
                 exit 1
             fi
             echo "下载成功。"
@@ -84,7 +87,7 @@ fi
 if [ ! -x "$CLOUDFLARED_BINARY" ]; then
     echo "提示：文件 '$CLOUDFLARED_BINARY' 不是可执行文件，正在尝试添加权限..."
     chmod +x "$CLOUDFLARED_BINARY"
-    if [ $? -ne 0 ]; then
+    if [ ! -x "$CLOUDFLARED_BINARY" ]; then
         echo "错误：无法为文件 '$CLOUDFLARED_BINARY' 设置可执行权限。请手动执行 'chmod +x $CLOUDFLARED_BINARY'。" >&2
         exit 1
     fi
@@ -99,11 +102,23 @@ echo ""
 echo "脚本已启动，将使用 '$CLOUDFLARED_BINARY' 执行连接。"
 echo ""
 
-# 4. 交互式输入参数
+# 4. 获取连接参数
 read -p "请输入本地监听端口［21128］： " PORT
 PORT=${PORT:-21128}
 
-read -p "请输入隧道地址 (hostname)： " HOSTNAME
+# 优先从命令行第一个参数 ($1) 获取 HOSTNAME
+# 使用 ${1:-} 结构：如果 $1 存在且不为空，则使用 $1 的值，否则为空字符串。这能安全地配合 `set -u`
+HOSTNAME="${1:-}"
+
+if [ -z "$HOSTNAME" ]; then
+    # 如果命令行没有提供 HOSTNAME，则交互式询问
+    read -p "请输入隧道地址 (hostname): " HOSTNAME
+else
+    # 如果从命令行获取了 HOSTNAME，则打印出来确认
+    echo "已从命令行参数获取隧道地址: $HOSTNAME"
+fi
+
+# 最终检查 HOSTNAME 是否为空
 if [ -z "$HOSTNAME" ]; then
     echo "错误：隧道地址不能为空。" >&2
     exit 1
@@ -113,4 +128,4 @@ fi
 echo ""
 echo "［已使用 '$CLOUDFLARED_BINARY' 执行连接命令，以下是程序的输出］"
 echo "----------------------------------------------------"
-exec "$CLOUDFLARED_BINARY" access tcp --listener 127.0.0.1:$PORT --hostname $HOSTNAME
+exec "$CLOUDFLARED_BINARY" access tcp --listener 127.0.0.1:$PORT --hostname "$HOSTNAME"
