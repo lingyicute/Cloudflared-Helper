@@ -69,24 +69,21 @@ jobs:
             echo "" # 添加换行以方便阅读日志
           done
 
-      # 步骤四：创建 Release 并上传打包好的文件
+     # 步骤四：创建 Release 并上传打包好的文件
       - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v2
-        with:
-          # Release 的标签名，使用工作流执行编号，如 v1, v2
-          tag_name: v${{ github.run_number }}
-          # Release 的标题
-          name: Release v${{ github.run_number }}
-          # Release 的描述内容，可以自定义
-          body: |
-            自动构建的发行版 v${{ github.run_number }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ github.run_number }}" release_assets/*.tar.gz \
+            --title "Release v${{ github.run_number }}" \
+            --notes-file - << 'EOF'
+          自动构建的发行版 v${{ github.run_number }}
 
-            此版本包含了适用于不同 CPU 架构的 `cloudflared` 二进制文件和 `cf-helper.sh` 脚本。
-            下载后解压即可使用 (`cf-helper.sh` 已包含可执行权限)。
+          此版本包含了适用于不同 CPU 架构的 `cloudflared` 二进制文件和 `cf-helper.sh` 脚本。
+          下载后解压即可使用 (`cf-helper.sh` 已包含可执行权限)。
 
-            **包含的附件:**
-            - `cf-helper-amd64.tar.gz`: 适用于标准 x86_64 架构的桌面/服务器 (Intel/AMD)
-            - `cf-helper-arm64.tar.gz`: 适用于 64 位 ARM 架构 (如树莓派 3/4/5, M1/M2 Mac)
-            - `cf-helper-arm.tar.gz`: 适用于 32 位 ARM 架构
-          # 指向要上传的文件（在上一步中创建的所有 .tar.gz 文件）
-          files: release_assets/*.tar.gz
+          **包含的附件:**
+          - `cf-helper-amd64.tar.gz`: 适用于标准 x86_64 架构的桌面/服务器 (Intel/AMD)
+          - `cf-helper-arm64.tar.gz`: 适用于 64 位 ARM 架构 (如树莓派 3/4/5, M1/M2 Mac)
+          - `cf-helper-arm.tar.gz`: 适用于 32 位 ARM 架构
+          EOF
