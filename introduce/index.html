@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Cloudflared Helper —— 一个智能、友好的 Bash 脚本，一条命令即可通过 Cloudflare Tunnel 建立 TCP 连接。">
+<title>Cloudflared Helper · 一条命令，穿越 Cloudflare Tunnel</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='28' fill='%23f38020'/><path d='M30 62h40a12 12 0 0 0 0-24 18 18 0 0 0-34 6 10 10 0 0 0-6 18z' fill='white'/></svg>">
+<style>
+/* ---------- 全局字体 ---------- */
+@font-face {
+  font-family: 'Nebulove';
+  src: url('https://raw.githubusercontent.com/lingyicute/Nebulove/main/Nebulove.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* ---------- Material You 动态配色（oklch 色调调色板） ---------- */
+:root {
+  --h: 60;                       /* 种子色相（默认：Cloudflare 橙） */
+  --t: calc(var(--h) + 60);      /* 第三色相 */
+  --n-c: 0.012;                  /* 中性色微弱着色 */
+
+  --primary: oklch(0.47 0.15 var(--h));
+  --on-primary: oklch(1 0 0);
+  --primary-container: oklch(0.90 0.075 var(--h));
+  --on-primary-container: oklch(0.24 0.09 var(--h));
+
+  --secondary: oklch(0.47 0.05 var(--h));
+  --on-secondary: oklch(1 0 0);
+  --secondary-container: oklch(0.91 0.035 var(--h));
+  --on-secondary-container: oklch(0.24 0.04 var(--h));
+
+  --tertiary: oklch(0.46 0.10 var(--t));
+  --on-tertiary: oklch(1 0 0);
+  --tertiary-container: oklch(0.90 0.06 var(--t));
+  --on-tertiary-container: oklch(0.24 0.07 var(--t));
+
+  --error: oklch(0.50 0.19 27);
+  --error-container: oklch(0.92 0.05 27);
+  --on-error-container: oklch(0.28 0.10 27);
+
+  --surface: oklch(0.985 0.006 var(--h));
+  --surface-dim: oklch(0.87 var(--n-c) var(--h));
+  --surface-bright: oklch(0.985 0.006 var(--h));
+  --surface-container-lowest: oklch(1 0 0);
+  --surface-container-low: oklch(0.965 0.007 var(--h));
+  --surface-container: oklch(0.945 0.009 var(--h));
+  --surface-container-high: oklch(0.925 0.011 var(--h));
+  --surface-container-highest: oklch(0.90 0.013 var(--h));
+  --on-surface: oklch(0.20 0.012 var(--h));
+  --on-surface-variant: oklch(0.42 0.025 var(--h));
+  --surface-variant: oklch(0.90 0.02 var(--h));
+
+  --outline: oklch(0.58 0.022 var(--h));
+  --outline-variant: oklch(0.83 0.018 var(--h));
+  --inverse-surface: oklch(0.27 0.012 var(--h));
+  --inverse-on-surface: oklch(0.95 0.008 var(--h));
+  --inverse-primary: oklch(0.82 0.10 var(--h));
+  --scrim: oklch(0 0 0);
+
+  --shadow-1: 0 1px 2px oklch(0 0 0 / .18), 0 1px 3px 1px oklch(0 0 0 / .08);
+  --shadow-2: 0 1px 2px oklch(0 0 0 / .18), 0 2px 6px 2px oklch(0 0 0 / .10);
+  --shadow-3: 0 4px 8px 3px oklch(0 0 0 / .10), 0 1px 3px oklch(0 0 0 / .18);
+
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
+  --ease-emph: cubic-bezier(.2, 0, 0, 1);
+  --ease-std: cubic-bezier(.2, 0, 0, 1);
+
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --primary: oklch(0.83 0.10 var(--h));
+  --on-primary: oklch(0.30 0.10 var(--h));
+  --primary-container: oklch(0.39 0.12 var(--h));
+  --on-primary-container: oklch(0.93 0.05 var(--h));
+
+  --secondary: oklch(0.83 0.04 var(--h));
+  --on-secondary: oklch(0.30 0.04 var(--h));
+  --secondary-container: oklch(0.36 0.04 var(--h));
+  --on-secondary-container: oklch(0.92 0.025 var(--h));
+
+  --tertiary: oklch(0.83 0.08 var(--t));
+  --on-tertiary: oklch(0.30 0.07 var(--t));
+  --tertiary-container: oklch(0.39 0.08 var(--t));
+  --on-tertiary-container: oklch(0.93 0.04 var(--t));
+
+  --error: oklch(0.80 0.10 27);
+  --error-container: oklch(0.38 0.12 27);
+  --on-error-container: oklch(0.92 0.04 27);
+
+  --surface: oklch(0.155 0.012 var(--h));
+  --surface-dim: oklch(0.155 0.012 var(--h));
+  --surface-bright: oklch(0.33 0.014 var(--h));
+  --surface-container-lowest: oklch(0.12 0.01 var(--h));
+  --surface-container-low: oklch(0.19 0.012 var(--h));
+  --surface-container: oklch(0.22 0.013 var(--h));
+  --surface-container-high: oklch(0.255 0.014 var(--h));
+  --surface-container-highest: oklch(0.29 0.015 var(--h));
+  --on-surface: oklch(0.92 0.01 var(--h));
+  --on-surface-variant: oklch(0.79 0.02 var(--h));
+  --surface-variant: oklch(0.30 0.02 var(--h));
+
+  --outline: oklch(0.60 0.02 var(--h));
+  --outline-variant: oklch(0.36 0.02 var(--h));
+  --inverse-surface: oklch(0.92 0.01 var(--h));
+  --inverse-on-surface: oklch(0.25 0.012 var(--h));
+  --inverse-primary: oklch(0.47 0.15 var(--h));
+
+  --shadow-1: 0 1px 2px oklch(0 0 0 / .4), 0 1px 3px 1px oklch(0 0 0 / .25);
+  --shadow-2: 0 1px 2px oklch(0 0 0 / .4), 0 2px 6px 2px oklch(0 0 0 / .3);
+  --shadow-3: 0 4px 8px 3px oklch(0 0 0 / .3), 0 1px 3px oklch(0 0 0 / .4);
+  color-scheme: dark;
+}
+
+/* ---------- 基础 ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: 'Nebulove', 'PingFang SC', 'HarmonyOS Sans SC', 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+  background: var(--surface);
+  color: var(--on-surface);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .5s var(--ease-std), color .5s var(--ease-std);
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+code, pre, .mono { font-family: 'Nebulove', ui-monospace, 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace; }
+::selection { background: var(--primary-container); color: var(--on-primary-container); }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: var(--r-sm); }
+
+/* 字体阶梯（Material 3 Type Scale） */
+.display-lg { font-size: clamp(2.6rem, 6vw, 4rem); line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
+.headline-lg { font-size: clamp(1.75rem, 3.2vw, 2.25rem); line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+.headline-md { font-size: 1.5rem; line-height: 1.3; font-weight: 600; }
+.title-lg { font-size: 1.25rem; font-weight: 600; line-height: 1.4; }
+.title-md { font-size: 1rem; font-weight: 600; line-height: 1.5; }
+.body-lg { font-size: 1.05rem; line-height: 1.65; }
+.body-md { font-size: .95rem; line-height: 1.6; }
+.label-lg { font-size: .875rem; font-weight: 600; letter-spacing: .01em; }
+.label-md { font-size: .75rem; font-weight: 600; letter-spacing: .03em; }
+
+.container { width: min(1180px, 100% - 2.5rem); margin-inline: auto; }
+section { padding-block: clamp(3.5rem, 8vw, 6.5rem); scroll-margin-top: 80px; }
+.section-head { max-width: 640px; margin-bottom: 2.5rem; }
+.section-head .eyebrow {
+  display: inline-flex; align-items: center; gap: .5rem;
+  color: var(--primary); font-weight: 600; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase;
+  margin-bottom: .75rem;
+}
+.section-head .eyebrow::before { content: ''; width: 24px; height: 3px; border-radius: 2px; background: var(--primary); }
+.section-head p { color: var(--on-surface-variant); margin-top: .75rem; }
+
+/* ---------- 涟漪（State layer + Ripple） ---------- */
+.ripple { position: relative; overflow: hidden; isolation: isolate; -webkit-tap-highlight-color: transparent; }
+.ripple::after {
+  content: ''; position: absolute; inset: 0; background: currentColor; opacity: 0;
+  transition: opacity .2s; pointer-events: none; border-radius: inherit;
+}
+.ripple:hover::after { opacity: .08; }
+.ripple:active::after { opacity: .12; }
+.ripple-wave {
+  position: absolute; border-radius: 50%; background: currentColor; opacity: .18;
+  transform: scale(0); animation: ripple .6s var(--ease-std) forwards; pointer-events: none;
+}
+@keyframes ripple { to { transform: scale(2.6); opacity: 0; } }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  height: 44px; padding: 0 1.5rem; border-radius: var(--r-full); border: none;
+  font: inherit; font-weight: 600; font-size: .95rem; cursor: pointer; white-space: nowrap;
+  transition: box-shadow .25s, background-color .3s, color .3s, transform .2s var(--ease-emph);
+}
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn-filled { background: var(--primary); color: var(--on-primary); }
+.btn-filled:hover { box-shadow: var(--shadow-1); }
+.btn-tonal { background: var(--secondary-container); color: var(--on-secondary-container); }
+.btn-tonal:hover { box-shadow: var(--shadow-1); }
+.btn-outlined { background: transparent; color: var(--primary); box-shadow: inset 0 0 0 1px var(--outline); }
+.btn-text { background: transparent; color: var(--primary); padding: 0 .85rem; }
+.btn-lg { height: 56px; padding: 0 2rem; font-size: 1.05rem; border-radius: var(--r-lg); }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: var(--r-full); border: none; background: transparent;
+  color: var(--on-surface-variant); display: inline-grid; place-items: center; cursor: pointer;
+  transition: background-color .25s;
+}
+.icon-btn svg { width: 24px; height: 24px; }
+
+/* ---------- 顶部应用栏 ---------- */
+.app-bar {
+  position: sticky; top: 0; z-index: 50; height: 68px;
+  background: color-mix(in oklch, var(--surface) 80%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  transition: background-color .3s, box-shadow .3s;
+}
+.app-bar.scrolled { background: color-mix(in oklch, var(--surface-container) 85%, transparent); box-shadow: 0 1px 0 var(--outline-variant); }
+.app-bar .container { height: 100%; display: flex; align-items: center; gap: 1rem; }
+.brand { display: flex; align-items: center; gap: .75rem; font-weight: 700; font-size: 1.1rem; }
+.brand-logo {
+  width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--primary-container); color: var(--on-primary-container);
+  transition: background-color .3s, color .3s, border-radius .4s var(--ease-emph);
+}
+.brand:hover .brand-logo { border-radius: 50%; }
+.brand-logo svg { width: 24px; height: 24px; }
+.nav { display: flex; gap: .25rem; margin-left: auto; }
+.nav a {
+  padding: .5rem 1rem; border-radius: var(--r-full); font-weight: 500; font-size: .95rem;
+  color: var(--on-surface-variant); transition: background-color .25s, color .25s;
+}
+.nav a:hover, .nav a.active { background: var(--secondary-container); color: var(--on-secondary-container); }
+.app-bar-actions { display: flex; align-items: center; gap: .25rem; }
+.app-bar-actions .nav + & { margin-left: 0; }
+.only-mobile { display: none; }
+
+/* 主题切换开关（Material Switch） */
+.switch { position: relative; width: 52px; height: 32px; border-radius: var(--r-full); border: 2px solid var(--outline); background: var(--surface-container-highest); cursor: pointer; transition: background-color .3s, border-color .3s; flex: none; }
+.switch .thumb {
+  position: absolute; top: 50%; left: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--outline);
+  transform: translateY(-50%); transition: transform .35s var(--ease-emph), width .35s var(--ease-emph), height .35s var(--ease-emph), background-color .3s, left .35s var(--ease-emph);
+  display: grid; place-items: center;
+}
+.switch .thumb svg { width: 14px; height: 14px; opacity: 0; transition: opacity .2s; }
+.switch[aria-checked="true"] { background: var(--primary); border-color: var(--primary); }
+.switch[aria-checked="true"] .thumb { left: 2px; width: 24px; height: 24px; transform: translate(22px, -50%); background: var(--on-primary); color: var(--on-primary-container); }
+.switch[aria-checked="true"] .thumb svg { opacity: 1; }
+
+/* 主题色选择器 */
+.palette-picker { position: relative; }
+.palette-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); background: var(--surface-container); border-radius: var(--r-lg);
+  padding: .75rem; box-shadow: var(--shadow-2); display: flex; gap: .5rem; opacity: 0; pointer-events: none;
+  transform: translateY(-6px) scale(.96); transform-origin: top right; transition: opacity .2s, transform .25s var(--ease-emph);
+}
+.palette-menu.open { opacity: 1; pointer-events: auto; transform: none; }
+.swatch { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; background: oklch(0.6 0.15 var(--sw)); position: relative; transition: transform .2s var(--ease-emph); }
+.swatch:hover { transform: scale(1.12); }
+.swatch.active::after { content: ''; position: absolute; inset: -5px; border: 2px solid var(--primary); border-radius: 50%; }
+
+/* ---------- Hero ---------- */
+.hero { position: relative; padding-block: clamp(3rem, 8vw, 6rem) clamp(3rem, 6vw, 5rem); overflow: hidden; }
+.hero-blob {
+  position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; pointer-events: none; z-index: -1;
+  transition: background-color .6s;
+}
+.hero-blob.a { width: 520px; height: 520px; background: var(--primary-container); top: -180px; right: -120px; animation: float 14s ease-in-out infinite; }
+.hero-blob.b { width: 380px; height: 380px; background: var(--tertiary-container); bottom: -140px; left: -100px; animation: float 18s ease-in-out infinite reverse; }
+@keyframes float { 0%,100% { transform: translate(0,0) } 50% { transform: translate(-30px, 30px) } }
+.hero .container { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
+.hero-chip {
+  display: inline-flex; align-items: center; gap: .5rem; height: 32px; padding: 0 .9rem 0 .5rem; border-radius: var(--r-sm);
+  background: var(--tertiary-container); color: var(--on-tertiary-container); font-size: .85rem; font-weight: 600; margin-bottom: 1.5rem;
+}
+.hero-chip .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--tertiary); display: grid; place-items: center; }
+.hero-chip .dot svg { width: 12px; height: 12px; color: var(--on-tertiary); }
+.hero h1 { margin-bottom: 1.25rem; }
+.hero h1 .accent { color: var(--primary); position: relative; display: inline-block; }
+.hero h1 .accent::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: .05em; height: .28em; background: var(--primary-container);
+  z-index: -1; border-radius: 4px; transform: skewX(-8deg);
+}
+.hero p.lead { color: var(--on-surface-variant); max-width: 540px; margin-bottom: 2rem; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 2rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: .4rem; height: 32px; padding: 0 .85rem; border-radius: var(--r-sm);
+  font-size: .82rem; font-weight: 600; color: var(--on-surface-variant); box-shadow: inset 0 0 0 1px var(--outline-variant);
+}
+.chip svg { width: 16px; height: 16px; color: var(--primary); }
+
+/* 终端窗口 */
+.terminal {
+  background: var(--inverse-surface); color: var(--inverse-on-surface); border-radius: var(--r-xl);
+  box-shadow: var(--shadow-3); overflow: hidden; font-size: .92rem; transform: rotate(0); transition: transform .5s var(--ease-emph);
+  position: relative;
+}
+html[data-theme="dark"] .terminal { background: var(--surface-container-lowest); color: var(--on-surface); box-shadow: var(--shadow-3), inset 0 0 0 1px var(--outline-variant); }
+.terminal-bar { display: flex; align-items: center; gap: .5rem; padding: .9rem 1.2rem; background: oklch(0 0 0 / .15); }
+.terminal-bar i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.terminal-bar i:nth-child(1) { background: oklch(0.7 0.18 27); }
+.terminal-bar i:nth-child(2) { background: oklch(0.85 0.16 90); }
+.terminal-bar i:nth-child(3) { background: oklch(0.75 0.17 150); }
+.terminal-bar span { margin-left: auto; font-size: .75rem; opacity: .6; }
+.terminal-body { padding: 1.25rem 1.4rem 1.5rem; min-height: 300px; line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
+.terminal-body .ln { display: block; opacity: 0; transform: translateY(4px); animation: lineIn .35s var(--ease-std) forwards; }
+@keyframes lineIn { to { opacity: 1; transform: none; } }
+.t-prompt { color: var(--inverse-primary); font-weight: 700; }
+html[data-theme="dark"] .t-prompt { color: var(--primary); }
+.t-dim { opacity: .6; }
+.t-ok { color: oklch(0.8 0.15 150); }
+.t-warn { color: oklch(0.85 0.15 85); }
+.t-info { color: oklch(0.8 0.1 240); }
+.t-cursor { display: inline-block; width: .55em; height: 1.1em; background: currentColor; vertical-align: -0.15em; animation: blink 1s steps(1) infinite; margin-left: 1px; }
+@keyframes blink { 50% { opacity: 0; } }
+.terminal-replay {
+  position: absolute; right: 1rem; bottom: 1rem; height: 36px; padding: 0 .9rem; border-radius: var(--r-full); border: none; cursor: pointer;
+  background: oklch(1 0 0 / .1); color: inherit; font: inherit; font-size: .8rem; font-weight: 600; display: inline-flex; align-items: center; gap: .4rem;
+  backdrop-filter: blur(6px);
+}
+.terminal-replay svg { width: 16px; height: 16px; }
+
+/* ---------- 功能卡片 ---------- */
+.features { background: var(--surface-container-low); border-radius: var(--r-xl) var(--r-xl) 0 0; transition: background-color .5s; }
+.feature-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem; }
+.card {
+  background: var(--surface-container-lowest); border-radius: var(--r-xl); padding: 1.75rem;
+  transition: transform .35s var(--ease-emph), box-shadow .35s, background-color .4s; position: relative; overflow: hidden;
+}
+.card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); }
+.feature-card { grid-column: span 4; display: flex; flex-direction: column; gap: 1rem; }
+.feature-card.wide { grid-column: span 6; }
+.feature-card.tint-primary { background: var(--primary-container); color: var(--on-primary-container); }
+.feature-card.tint-secondary { background: var(--secondary-container); color: var(--on-secondary-container); }
+.feature-card.tint-tertiary { background: var(--tertiary-container); color: var(--on-tertiary-container); }
+.feature-card .icon {
+  width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center;
+  background: var(--primary); color: var(--on-primary); transition: border-radius .4s var(--ease-emph);
+}
+.feature-card:hover .icon { border-radius: 50%; }
+.feature-card.tint-primary .icon { background: var(--on-primary-container); color: var(--primary-container); }
+.feature-card.tint-secondary .icon { background: var(--secondary); color: var(--on-secondary); }
+.feature-card.tint-tertiary .icon { background: var(--tertiary); color: var(--on-tertiary); }
+.feature-card .icon svg { width: 26px; height: 26px; }
+.feature-card h3 { margin-bottom: .25rem; }
+.feature-card p { font-size: .95rem; opacity: .85; }
+.feature-card ul { list-style: none; display: grid; gap: .5rem; font-size: .92rem; margin-top: .25rem; }
+.feature-card ul li { display: flex; gap: .5rem; align-items: flex-start; opacity: .9; }
+.feature-card ul li::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; margin-top: .55em; }
+.feature-card kbd { font-family: inherit; background: oklch(0 0 0 / .08); padding: .05em .4em; border-radius: 6px; font-size: .9em; }
+html[data-theme="dark"] .feature-card kbd { background: oklch(1 0 0 / .1); }
+
+/* ---------- 下载 ---------- */
+.download { background: var(--surface-container-low); transition: background-color .5s; }
+.download-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.dl-card { display: flex; flex-direction: column; gap: 1rem; padding: 1.75rem; border-radius: var(--r-xl); background: var(--surface-container-lowest); transition: transform .35s var(--ease-emph), box-shadow .35s, outline-color .3s; outline: 2px solid transparent; outline-offset: -2px; }
+.dl-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); }
+.dl-card.recommended { outline-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); }
+.dl-card .arch-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.dl-card .arch-icon { width: 56px; height: 56px; border-radius: 18px; background: var(--surface-container-high); color: var(--primary); display: grid; place-items: center; }
+.dl-card.recommended .arch-icon { background: var(--on-primary-container); color: var(--primary-container); }
+.dl-card .arch-icon svg { width: 28px; height: 28px; }
+.badge { font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .3rem .65rem; border-radius: var(--r-full); background: var(--primary); color: var(--on-primary); display: none; align-items: center; gap: .3rem; }
+.badge svg { width: 12px; height: 12px; }
+.dl-card.recommended .badge { display: inline-flex; }
+.dl-card h3 { font-size: 1.35rem; font-weight: 700; }
+.dl-card .arch-alias { font-size: .85rem; opacity: .7; margin-top: -.1rem; }
+.dl-card p { font-size: .92rem; opacity: .85; flex: 1; }
+.dl-card .file { font-size: .8rem; opacity: .7; display: flex; align-items: center; gap: .35rem; }
+.dl-card .file svg { width: 14px; height: 14px; }
+.dl-card .btn { width: 100%; }
+.dl-card.recommended .btn-filled { background: var(--on-primary-container); color: var(--primary-container); }
+.dl-card:not(.recommended) .btn { background: var(--secondary-container); color: var(--on-secondary-container); }
+.download-note { margin-top: 1.5rem; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-radius: var(--r-lg); background: var(--surface-container); color: var(--on-surface-variant); font-size: .92rem; }
+.download-note svg { width: 22px; height: 22px; color: var(--primary); flex: none; }
+.download-note a { color: var(--primary); font-weight: 600; margin-left: auto; display: inline-flex; align-items: center; gap: .25rem; }
+.download-note a svg { width: 16px; height: 16px; }
+
+/* ---------- 用法 ---------- */
+.usage-layout { display: grid; grid-template-columns: 340px 1fr; gap: 2rem; align-items: start; }
+.steps { display: grid; gap: .75rem; position: sticky; top: 90px; }
+.step { display: flex; gap: 1rem; padding: 1.1rem 1.25rem; border-radius: var(--r-lg); background: var(--surface-container-low); align-items: flex-start; }
+.step-num { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-weight: 700; font-size: .95rem; }
+.step h4 { font-weight: 600; margin-bottom: .2rem; }
+.step p { font-size: .9rem; color: var(--on-surface-variant); }
+.step code { display: inline-block; margin-top: .4rem; font-size: .85rem; background: var(--surface-container-highest); padding: .2em .6em; border-radius: 6px; }
+
+/* 分段按钮 */
+.segmented { display: inline-flex; border: 1px solid var(--outline); border-radius: var(--r-full); overflow: hidden; margin-bottom: 1.25rem; }
+.segmented button {
+  height: 40px; padding: 0 1.25rem; border: none; background: transparent; color: var(--on-surface); font: inherit; font-weight: 600; font-size: .9rem;
+  cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; transition: background-color .25s, color .25s; border-right: 1px solid var(--outline);
+}
+.segmented button:last-child { border-right: none; }
+.segmented button svg { width: 18px; height: 18px; opacity: 0; width: 0; transition: width .25s var(--ease-emph), opacity .2s; }
+.segmented button[aria-selected="true"] { background: var(--secondary-container); color: var(--on-secondary-container); }
+.segmented button[aria-selected="true"] svg { width: 18px; opacity: 1; }
+
+.code-panel { display: none; animation: fadeUp .4s var(--ease-emph); }
+.code-panel.active { display: block; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.code-block { position: relative; background: var(--surface-container-highest); border-radius: var(--r-lg); padding: 1.25rem 1.4rem; overflow-x: auto; font-size: .92rem; line-height: 1.7; }
+.code-block + .code-block, .code-panel p + .code-block, .code-block + p { margin-top: 1rem; }
+.code-block .cm { color: var(--on-surface-variant); opacity: .8; }
+.code-block .kw { color: var(--primary); font-weight: 600; }
+.code-block .str { color: var(--tertiary); }
+.code-panel p { color: var(--on-surface-variant); font-size: .95rem; }
+.copy-btn {
+  position: absolute; top: .6rem; right: .6rem; height: 34px; padding: 0 .75rem; border-radius: var(--r-full); border: none; cursor: pointer;
+  background: var(--surface-container-lowest); color: var(--primary); font: inherit; font-size: .8rem; font-weight: 600; display: inline-flex; align-items: center; gap: .35rem;
+  box-shadow: var(--shadow-1); transition: background-color .25s;
+}
+.copy-btn svg { width: 16px; height: 16px; }
+.code-block:hover .copy-btn { background: var(--primary-container); color: var(--on-primary-container); }
+.hint-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.25rem; }
+.hint { display: flex; gap: .75rem; padding: 1rem 1.15rem; border-radius: var(--r-lg); font-size: .9rem; }
+.hint svg { width: 22px; height: 22px; flex: none; }
+.hint.ok { background: var(--tertiary-container); color: var(--on-tertiary-container); }
+.hint.warn { background: var(--error-container); color: var(--on-error-container); }
+
+/* ---------- 环境要求 + 协议 ---------- */
+.about { background: var(--surface-container-low); transition: background-color .5s; }
+.about-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; }
+.req-card { padding: 1.75rem; border-radius: var(--r-xl); background: var(--surface-container-lowest); }
+.req-card h3, .license-card h3 { margin-bottom: 1rem; display: flex; align-items: center; gap: .6rem; }
+.req-card h3 svg, .license-card h3 svg { width: 24px; height: 24px; color: var(--primary); }
+.req-list { list-style: none; display: grid; gap: .75rem; }
+.req-list li { display: flex; align-items: center; gap: .85rem; padding: .85rem 1rem; border-radius: var(--r-md); background: var(--surface-container-low); }
+.req-list .rq-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--secondary-container); color: var(--on-secondary-container); display: grid; place-items: center; flex: none; }
+.req-list .rq-icon svg { width: 20px; height: 20px; }
+.req-list b { display: block; }
+.req-list small { color: var(--on-surface-variant); font-size: .82rem; }
+.license-card { padding: 1.75rem; border-radius: var(--r-xl); background: var(--tertiary-container); color: var(--on-tertiary-container); }
+.license-card h3 svg { color: var(--tertiary); }
+.license-card > p { opacity: .85; font-size: .95rem; margin-bottom: 1.25rem; }
+.license-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.license-col h4 { font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; opacity: .7; margin-bottom: .6rem; }
+.license-col ul { list-style: none; display: grid; gap: .5rem; font-size: .92rem; }
+.license-col li { display: flex; gap: .5rem; align-items: flex-start; }
+.license-col li svg { width: 18px; height: 18px; flex: none; margin-top: .15em; color: var(--tertiary); }
+.license-card .btn { margin-top: 1.25rem; background: var(--on-tertiary-container); color: var(--tertiary-container); }
+
+/* ---------- CTA ---------- */
+.cta { padding-block: 0 4rem; }
+.cta-card {
+  border-radius: var(--r-xl); padding: clamp(2rem, 5vw, 3.5rem); background: var(--primary); color: var(--on-primary);
+  display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap; position: relative; overflow: hidden;
+}
+.cta-card::before { content: ''; position: absolute; width: 360px; height: 360px; border-radius: 50%; background: var(--primary-container); opacity: .25; right: -100px; top: -160px; }
+.cta-card::after { content: ''; position: absolute; width: 200px; height: 200px; border-radius: 50%; background: var(--on-primary); opacity: .08; left: 40%; bottom: -120px; }
+.cta-card h2 { margin-bottom: .5rem; }
+.cta-card p { opacity: .85; max-width: 520px; }
+.cta-card .actions { display: flex; gap: .75rem; flex-wrap: wrap; position: relative; }
+.cta-card .btn-filled { background: var(--on-primary); color: var(--primary); }
+.cta-card .btn-outlined { color: var(--on-primary); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--on-primary) 50%, transparent); }
+
+/* ---------- 页脚 ---------- */
+footer { padding: 2.5rem 0 3rem; border-top: 1px solid var(--outline-variant); }
+footer .container { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 2rem; color: var(--on-surface-variant); font-size: .9rem; }
+footer .links { margin-left: auto; display: flex; gap: .25rem; flex-wrap: wrap; }
+footer .links a { padding: .4rem .85rem; border-radius: var(--r-full); transition: background-color .25s; }
+footer .links a:hover { background: var(--surface-container-high); color: var(--on-surface); }
+
+/* ---------- FAB ---------- */
+.fab {
+  position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 40; height: 56px; padding: 0 1.25rem 0 1rem; border: none; border-radius: var(--r-lg);
+  background: var(--primary-container); color: var(--on-primary-container); box-shadow: var(--shadow-3); font: inherit; font-weight: 600; font-size: .95rem;
+  display: inline-flex; align-items: center; gap: .6rem; cursor: pointer; transform: translateY(120px); opacity: 0; transition: transform .45s var(--ease-emph), opacity .3s, box-shadow .25s;
+}
+.fab.show { transform: none; opacity: 1; }
+.fab svg { width: 24px; height: 24px; }
+
+/* ---------- Snackbar ---------- */
+.snackbar {
+  position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 120%); z-index: 60; min-width: 280px; max-width: calc(100vw - 2rem);
+  background: var(--inverse-surface); color: var(--inverse-on-surface); padding: .9rem 1.25rem; border-radius: var(--r-xs);
+  box-shadow: var(--shadow-3); font-size: .92rem; display: flex; align-items: center; gap: 1rem; transition: transform .4s var(--ease-emph);
+  border-radius: 8px;
+}
+.snackbar.show { transform: translate(-50%, 0); }
+.snackbar b { color: var(--inverse-primary); margin-left: auto; font-weight: 700; }
+
+/* ---------- 滚动进场 ---------- */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s var(--ease-std), transform .7s var(--ease-emph); }
+.reveal.in { opacity: 1; transform: none; }
+.reveal[data-delay="1"] { transition-delay: .08s; } .reveal[data-delay="2"] { transition-delay: .16s; } .reveal[data-delay="3"] { transition-delay: .24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1024px) {
+  .feature-card { grid-column: span 6; }
+  .feature-card.wide { grid-column: span 12; }
+  .usage-layout { grid-template-columns: 1fr; }
+  .steps { position: static; grid-template-columns: repeat(3, 1fr); }
+  .about-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 820px) {
+  .hero .container { grid-template-columns: 1fr; }
+  .nav { display: none; }
+  .only-mobile { display: inline-grid; }
+  .download-grid { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .hint-row { grid-template-columns: 1fr; }
+  .license-cols { grid-template-columns: 1fr; }
+  .fab span { display: none; }
+  .fab { padding: 0; width: 56px; justify-content: center; }
+}
+@media (max-width: 560px) {
+  .feature-card, .feature-card.wide { grid-column: span 12; }
+  .btn-lg { width: 100%; }
+  .hero-actions { flex-direction: column; }
+  .segmented { width: 100%; }
+  .segmented button { flex: 1; justify-content: center; padding: 0 .5rem; }
+}
+
+/* 移动端导航抽屉（Bottom sheet） */
+.sheet-scrim { position: fixed; inset: 0; background: oklch(0 0 0 / .4); z-index: 70; opacity: 0; pointer-events: none; transition: opacity .3s; }
+.sheet-scrim.open { opacity: 1; pointer-events: auto; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 71; background: var(--surface-container-low); border-radius: var(--r-xl) var(--r-xl) 0 0; padding: .75rem 1.25rem 2rem; transform: translateY(100%); transition: transform .4s var(--ease-emph); }
+.sheet.open { transform: none; }
+.sheet .handle { width: 32px; height: 4px; border-radius: 2px; background: var(--outline); margin: 0 auto 1rem; }
+.sheet a { display: flex; align-items: center; gap: .85rem; padding: .9rem 1rem; border-radius: var(--r-full); font-weight: 600; transition: background-color .25s; }
+.sheet a:hover { background: var(--secondary-container); color: var(--on-secondary-container); }
+.sheet a svg { width: 22px; height: 22px; color: var(--primary); }
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部应用栏 ===== -->
+<header class="app-bar" id="appBar">
+  <div class="container">
+    <a class="brand" href="#top" aria-label="Cloudflared Helper 首页">
+      <span class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 .4-8.98A7 7 0 0 0 4.7 8.7 4 4 0 0 0 6 19h11.5z"/></svg>
+      </span>
+      Cloudflared Helper
+    </a>
+    <nav class="nav" aria-label="主导航">
+      <a href="#features">功能</a>
+      <a href="#download">下载</a>
+      <a href="#usage">用法</a>
+      <a href="#about">关于</a>
+    </nav>
+    <div class="app-bar-actions">
+      <div class="palette-picker">
+        <button class="icon-btn ripple" id="paletteBtn" aria-label="切换主题色" title="主题色" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.4-.15-.75-.4-1-.25-.27-.4-.62-.4-1 0-.83.67-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.97-4.5-9-10-9z"/></svg>
+        </button>
+        <div class="palette-menu" id="paletteMenu" role="menu" aria-label="选择主题色">
+          <button class="swatch" style="--sw:60" data-h="60" aria-label="橙色" title="橙色"></button>
+          <button class="swatch" style="--sw:260" data-h="260" aria-label="蓝色" title="蓝色"></button>
+          <button class="swatch" style="--sw:150" data-h="150" aria-label="绿色" title="绿色"></button>
+          <button class="swatch" style="--sw:310" data-h="310" aria-label="紫色" title="紫色"></button>
+          <button class="swatch" style="--sw:15" data-h="15" aria-label="玫红" title="玫红"></button>
+          <button class="swatch" style="--sw:200" data-h="200" aria-label="青色" title="青色"></button>
+        </div>
+      </div>
+      <button class="switch" id="themeSwitch" role="switch" aria-checked="false" aria-label="切换深色模式" title="深色模式">
+        <span class="thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+        </span>
+      </button>
+      <a class="icon-btn ripple" href="https://github.com/lingyicute/Cloudflared-Helper" target="_blank" rel="noopener" aria-label="GitHub 仓库" title="GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+      </a>
+      <button class="icon-btn ripple only-mobile" id="menuBtn" aria-label="打开菜单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ===== Hero ===== -->
+  <section class="hero" aria-labelledby="heroTitle">
+    <div class="hero-blob a"></div>
+    <div class="hero-blob b"></div>
+    <div class="container">
+      <div>
+        <span class="hero-chip">
+          <span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+          AGPL-3.0 · Made with ❤️ by lingyicute
+        </span>
+        <h1 class="display-lg" id="heroTitle">一条命令，<br><span class="accent">穿越</span> Cloudflare Tunnel</h1>
+        <p class="lead body-lg">Cloudflared Helper 是一个智能、友好的 Bash 脚本，把冗长的 <code>cloudflared access tcp</code> 命令变成一次轻松的问答。远程桌面、SSH 或任意 TCP 服务，从此触手可及。</p>
+        <div class="hero-actions">
+          <a class="btn btn-filled btn-lg ripple" href="#download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            立即下载
+          </a>
+          <a class="btn btn-tonal btn-lg ripple" href="#usage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6M12 19h8"/></svg>
+            查看用法
+          </a>
+        </div>
+        <div class="hero-meta">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>x86_64 · arm64 · armv7</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>零依赖，开箱即用</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>严格的输入验证</span>
+        </div>
+      </div>
+
+      <div class="terminal reveal" data-delay="1" aria-label="脚本运行演示">
+        <div class="terminal-bar"><i></i><i></i><i></i><span>bash — cf-helper.sh</span></div>
+        <div class="terminal-body" id="termBody"></div>
+        <button class="terminal-replay ripple" id="replayBtn" aria-label="重新播放演示">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          重播
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 功能 ===== -->
+  <section class="features" id="features" aria-labelledby="featuresTitle">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">核心功能</span>
+        <h2 class="headline-lg" id="featuresTitle">不止是命令别名，<br>而是一个懂你的助手</h2>
+        <p class="body-lg">从架构识别到权限修复，从输入校验到状态反馈——每一个容易踩坑的细节，都替你想好了。</p>
+      </div>
+      <div class="feature-grid">
+        <article class="card feature-card wide tint-primary reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div>
+          <div>
+            <h3 class="title-lg">智能架构检测</h3>
+            <p>自动识别当前系统架构 <kbd>x86_64</kbd>、<kbd>aarch64</kbd>、<kbd>arm</kbd>，并精准匹配对应的 <kbd>cloudflared</kbd> 二进制文件名，告别"下载错版本"的烦恼。</p>
+          </div>
+        </article>
+        <article class="card feature-card wide tint-tertiary reveal" data-delay="1">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
+          <div>
+            <h3 class="title-lg">二进制文件自动管理</h3>
+            <ul>
+              <li><b>自动下载</b>：缺少 <kbd>cloudflared</kbd> 时，询问并从 GitHub 官方仓库拉取最新版本。</li>
+              <li><b>自动授权</b>：自动执行 <kbd>chmod +x</kbd>，彻底解决"权限不足"的经典报错。</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card feature-card reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div>
+            <h3 class="title-lg">交互模式</h3>
+            <p>直接运行脚本，通过清晰的问答引导输入主机名与端口，新手和不常用的连接都不再需要翻笔记。</p>
+          </div>
+        </article>
+        <article class="card feature-card tint-secondary reveal" data-delay="1">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+          <div>
+            <h3 class="title-lg">参数模式</h3>
+            <p>在命令后直接附上主机名与端口，一行搞定；也方便熟练用户集成到别的脚本或快捷方式中。</p>
+          </div>
+        </article>
+        <article class="card feature-card reveal" data-delay="2">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <div>
+            <h3 class="title-lg">强大的输入验证</h3>
+            <ul>
+              <li>端口必须是 <kbd>1–65535</kbd> 内的有效数字。</li>
+              <li>端口低于 <kbd>1024</kbd> 时贴心提醒可能需要 <kbd>sudo</kbd>。</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card feature-card wide reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg></div>
+          <div>
+            <h3 class="title-lg">清晰的帮助与错误提示</h3>
+            <p>标准的 <kbd>-h</kbd> / <kbd>--help</kbd> 随时查阅；执行的每一步都给出明确的状态反馈或错误信息，让你始终知道发生了什么。</p>
+          </div>
+        </article>
+        <article class="card feature-card wide reveal" data-delay="1" style="background: var(--surface-container-high);">
+          <div class="icon" style="background: var(--tertiary); color: var(--on-tertiary);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10M12 2a10 10 0 0 1 10 10M12 2c-3 3-3 17 0 20M12 2c3 3 3 17 0 20M2 12h20"/></svg></div>
+          <div>
+            <h3 class="title-lg">GitHub Actions 自动构建</h3>
+            <p>每个发行包由 CI 自动打包，内含助手脚本与对应架构的 <kbd>cloudflared</kbd> 程序。下载、解压、运行，三步完成。</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 下载 ===== -->
+  <section class="download" id="download" aria-labelledby="downloadTitle">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">下载</span>
+        <h2 class="headline-lg" id="downloadTitle">选择你的架构</h2>
+        <p class="body-lg">发行包由 GitHub Actions 自动构建，包含 <code>cf-helper.sh</code> 与对应架构的 <code>cloudflared</code>。<span id="detectNote"></span></p>
+      </div>
+      <div class="download-grid">
+        <article class="dl-card reveal" data-arch="amd64">
+          <div class="arch-top">
+            <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+            <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
+          </div>
+          <div>
+            <h3>x86_64</h3>
+            <div class="arch-alias mono">amd64</div>
+          </div>
+          <p>适用于绝大多数 64 位桌面电脑和服务器（Intel / AMD）。</p>
+          <div class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>cf-helper-amd64.tar.gz</div>
+          <a class="btn btn-filled ripple" href="https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-amd64.tar.gz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
+          </a>
+        </article>
+        <article class="dl-card reveal" data-arch="arm64" data-delay="1">
+          <div class="arch-top">
+            <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
+            <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
+          </div>
+          <div>
+            <h3>aarch64</h3>
+            <div class="arch-alias mono">arm64</div>
+          </div>
+          <p>适用于 64 位 ARM 设备，如树莓派 3/4/5、Apple Silicon（M1/M2/M3）Mac 等。</p>
+          <div class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>cf-helper-arm64.tar.gz</div>
+          <a class="btn btn-filled ripple" href="https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm64.tar.gz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
+          </a>
+        </article>
+        <article class="dl-card reveal" data-arch="arm" data-delay="2">
+          <div class="arch-top">
+            <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></svg></div>
+            <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
+          </div>
+          <div>
+            <h3>arm</h3>
+            <div class="arch-alias mono">armv7l</div>
+          </div>
+          <p>适用于 32 位 ARM 设备，如旧版树莓派、部分路由器与开发板。</p>
+          <div class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>cf-helper-arm.tar.gz</div>
+          <a class="btn btn-filled ripple" href="https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm.tar.gz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
+          </a>
+        </article>
+      </div>
+      <div class="download-note reveal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>不确定自己的架构？在终端运行 <code class="mono">uname -m</code> 即可查看。所有历史版本可在 Releases 页面找到。</span>
+        <a href="https://github.com/lingyicute/Cloudflared-Helper/releases" target="_blank" rel="noopener">前往 Releases <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 用法 ===== -->
+  <section id="usage" aria-labelledby="usageTitle">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">如何使用</span>
+        <h2 class="headline-lg" id="usageTitle">三步上手</h2>
+        <p class="body-lg">下载、授权、运行。之后每次连接，只需要回答两个问题——或者一行参数。</p>
+      </div>
+      <div class="usage-layout">
+        <aside class="steps reveal">
+          <div class="step">
+            <span class="step-num">1</span>
+            <div><h4>获取脚本</h4><p>下载 <code class="mono">cf-helper.sh</code>，建议与 <code class="mono">cloudflared</code> 放在同一目录。</p></div>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <div><h4>授予执行权限</h4><p>进入脚本所在目录后运行：</p><code class="mono">chmod +x cf-helper.sh</code></div>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <div><h4>运行脚本</h4><p>选择右侧任一方式启动隧道连接。</p></div>
+          </div>
+        </aside>
+
+        <div class="reveal" data-delay="1">
+          <div class="segmented" role="tablist" aria-label="使用方式">
+            <button role="tab" aria-selected="true" data-tab="interactive" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>交互模式</button>
+            <button role="tab" aria-selected="false" data-tab="args" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>参数模式</button>
+            <button role="tab" aria-selected="false" data-tab="help" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>获取帮助</button>
+          </div>
+
+          <div class="code-panel active" id="tab-interactive" role="tabpanel">
+            <p>推荐方式。直接运行脚本，它会引导你完成每一步。</p>
+            <div class="code-block"><button class="copy-btn ripple" data-copy="./cf-helper.sh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button><pre><span class="kw">./cf-helper.sh</span>
+<span class="cm">请输入隧道地址 (hostname):</span> <span class="str">your-tunnel.example.com</span>
+<span class="cm">请输入本地监听端口 [21128]:</span></pre></div>
+            <div class="hint-row">
+              <div class="hint ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><span>端口留空将使用默认值 <b>21128</b>，随后用任意客户端连接 <b>localhost:21128</b> 即可。</span></div>
+              <div class="hint warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg><span>若端口低于 <b>1024</b>，脚本会提醒你可能需要 <b>sudo</b> 权限。</span></div>
+            </div>
+          </div>
+
+          <div class="code-panel" id="tab-args" role="tabpanel">
+            <p>快速方式。直接在命令后提供所有必需参数，适合熟练用户或脚本集成。</p>
+            <div class="code-block"><button class="copy-btn ripple" data-copy="./cf-helper.sh your-tunnel.example.com 21128"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button><pre><span class="cm"># 用法: ./cf-helper.sh [HOSTNAME] [PORT]</span>
+<span class="cm"># 示例:</span>
+<span class="kw">./cf-helper.sh</span> <span class="str">your-tunnel.example.com</span> <span class="str">21128</span></pre></div>
+            <p style="margin-top:1rem">小技巧：为常用连接创建别名，一个单词即可连上。</p>
+            <div class="code-block"><button class="copy-btn ripple" data-copy="alias nas='~/cf-helper/cf-helper.sh nas.example.com 3389'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button><pre><span class="cm"># 写入 ~/.bashrc 或 ~/.zshrc</span>
+<span class="kw">alias</span> nas=<span class="str">'~/cf-helper/cf-helper.sh nas.example.com 3389'</span></pre></div>
+          </div>
+
+          <div class="code-panel" id="tab-help" role="tabpanel">
+            <p>查看所有可用的命令和说明。</p>
+            <div class="code-block"><button class="copy-btn ripple" data-copy="./cf-helper.sh --help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button><pre><span class="kw">./cf-helper.sh</span> <span class="str">--help</span>
+<span class="cm"># 或简写</span>
+<span class="kw">./cf-helper.sh</span> <span class="str">-h</span></pre></div>
+            <div class="hint-row">
+              <div class="hint ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg><span>脚本在每一步都会输出明确的状态或错误信息，遇到问题时先看看终端输出。</span></div>
+              <div class="hint ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span>若目录中没有 <b>cloudflared</b>，脚本会询问是否自动从官方仓库下载。</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 关于：环境要求 + 协议 ===== -->
+  <section class="about" id="about" aria-labelledby="aboutTitle">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">关于</span>
+        <h2 class="headline-lg" id="aboutTitle">轻量依赖，自由开源</h2>
+      </div>
+      <div class="about-grid">
+        <article class="req-card reveal">
+          <h3 class="title-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>环境要求</h3>
+          <ul class="req-list">
+            <li>
+              <span class="rq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6M12 19h8"/></svg></span>
+              <div><b>bash</b><small>几乎所有 Linux / macOS 系统自带</small></div>
+            </li>
+            <li>
+              <span class="rq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span>
+              <div><b>curl 或 wget</b><small>可选，仅在需要自动下载 cloudflared 时使用</small></div>
+            </li>
+          </ul>
+        </article>
+        <article class="license-card reveal" data-delay="1">
+          <h3 class="title-lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 7l9-4 9 4M5 7l-3 8a4 4 0 0 0 6 0L5 7zM19 7l-3 8a4 4 0 0 0 6 0l-3-8z"/></svg>授权协议 · AGPL-3.0</h3>
+          <p>本项目基于 GNU Affero General Public License v3.0 授权。你可以自由地使用、修改与分发，同时请遵守以下条件。</p>
+          <div class="license-cols">
+            <div class="license-col">
+              <h4>你可以</h4>
+              <ul>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>共享</b> — 在任何媒介以任何形式复制、发行本作品</span></li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>演绎</b> — 修改、转换或以本作品为基础进行创作</span></li>
+              </ul>
+            </div>
+            <div class="license-col">
+              <h4>惟须遵守</h4>
+              <ul>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span><b>署名</b> — 给出适当署名、协议链接并标明是否修改</span></li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span><b>相同方式共享</b> — 衍生作品须采用相同许可协议分发</span></li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span><b>源代码提供</b> — 在网络服务器上运行修改版须向用户提供源码</span></li>
+              </ul>
+            </div>
+          </div>
+          <a class="btn ripple" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">阅读许可证全文
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></svg>
+          </a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA ===== -->
+  <section class="cta">
+    <div class="container">
+      <div class="cta-card reveal">
+        <div>
+          <h2 class="headline-lg">准备好了吗？</h2>
+          <p class="body-lg">把冗长的命令交给 Cloudflared Helper，把注意力留给真正重要的事。</p>
+        </div>
+        <div class="actions">
+          <a class="btn btn-filled btn-lg ripple" href="#download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载发行包
+          </a>
+          <a class="btn btn-outlined btn-lg ripple" href="https://github.com/lingyicute/Cloudflared-Helper" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>Star on GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <span>© <span id="year"></span> lingyicute · Cloudflared Helper · AGPL-3.0</span>
+    <span class="label-md" style="opacity:.6">Made with Material You</span>
+    <nav class="links" aria-label="页脚链接">
+      <a href="https://github.com/lingyicute/Cloudflared-Helper" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/lingyicute/Cloudflared-Helper/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/lingyicute/Cloudflared-Helper/blob/main/README_EN.md" target="_blank" rel="noopener">English</a>
+      <a href="https://www.cloudflare.com/products/tunnel/" target="_blank" rel="noopener">Cloudflare Tunnel</a>
+    </nav>
+  </div>
+</footer>
+
+<!-- FAB：返回顶部 -->
+<button class="fab ripple" id="fab" aria-label="返回顶部">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  <span>回到顶部</span>
+</button>
+
+<!-- Snackbar -->
+<div class="snackbar" id="snackbar" role="status" aria-live="polite"><span id="snackText"></span><b>OK</b></div>
+
+<!-- 移动端底部菜单 -->
+<div class="sheet-scrim" id="sheetScrim"></div>
+<nav class="sheet" id="sheet" aria-label="移动端导航">
+  <div class="handle"></div>
+  <a href="#features" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>功能</a>
+  <a href="#download" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载</a>
+  <a href="#usage" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6M12 19h8"/></svg>用法</a>
+  <a href="#about" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>关于</a>
+</nav>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const root = document.documentElement;
+
+  /* ---------- 主题：深色模式 ---------- */
+  const themeSwitch = $('#themeSwitch');
+  const prefersDark = matchMedia('(prefers-color-scheme: dark)');
+  const applyTheme = (dark) => {
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    themeSwitch.setAttribute('aria-checked', String(dark));
+  };
+  const savedTheme = localStorage.getItem('cfh-theme');
+  applyTheme(savedTheme ? savedTheme === 'dark' : prefersDark.matches);
+  themeSwitch.addEventListener('click', () => {
+    const dark = themeSwitch.getAttribute('aria-checked') !== 'true';
+    applyTheme(dark);
+    localStorage.setItem('cfh-theme', dark ? 'dark' : 'light');
+  });
+  prefersDark.addEventListener('change', e => { if (!localStorage.getItem('cfh-theme')) applyTheme(e.matches); });
+
+  /* ---------- 主题：动态种子色 ---------- */
+  const paletteBtn = $('#paletteBtn'), paletteMenu = $('#paletteMenu');
+  const applyHue = (h) => {
+    root.style.setProperty('--h', h);
+    $$('.swatch').forEach(s => s.classList.toggle('active', s.dataset.h === String(h)));
+  };
+  applyHue(localStorage.getItem('cfh-hue') || 60);
+  paletteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = paletteMenu.classList.toggle('open');
+    paletteBtn.setAttribute('aria-expanded', String(open));
+  });
+  $$('.swatch').forEach(s => s.addEventListener('click', () => {
+    applyHue(s.dataset.h);
+    localStorage.setItem('cfh-hue', s.dataset.h);
+    showSnack(`主题色已切换为「${s.title}」`);
+  }));
+  document.addEventListener('click', (e) => {
+    if (!paletteMenu.contains(e.target)) { paletteMenu.classList.remove('open'); paletteBtn.setAttribute('aria-expanded', 'false'); }
+  });
+
+  /* ---------- 涟漪 ---------- */
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('.ripple');
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const wave = document.createElement('span');
+    wave.className = 'ripple-wave';
+    wave.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - rect.left - size / 2}px;top:${e.clientY - rect.top - size / 2}px`;
+    el.appendChild(wave);
+    wave.addEventListener('animationend', () => wave.remove());
+  });
+
+  /* ---------- 顶栏滚动状态 / FAB / 导航高亮 ---------- */
+  const appBar = $('#appBar'), fab = $('#fab');
+  const navLinks = $$('.nav a');
+  const sections = navLinks.map(a => $(a.getAttribute('href'))).filter(Boolean);
+  const onScroll = () => {
+    const y = scrollY;
+    appBar.classList.toggle('scrolled', y > 8);
+    fab.classList.toggle('show', y > 600);
+    let current = null;
+    for (const s of sections) if (s.getBoundingClientRect().top <= 120) current = s.id;
+    navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
+  };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  fab.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
+
+  /* ---------- 移动端底部菜单 ---------- */
+  const sheet = $('#sheet'), scrim = $('#sheetScrim');
+  const toggleSheet = (open) => { sheet.classList.toggle('open', open); scrim.classList.toggle('open', open); };
+  $('#menuBtn').addEventListener('click', () => toggleSheet(true));
+  scrim.addEventListener('click', () => toggleSheet(false));
+  $$('a', sheet).forEach(a => a.addEventListener('click', () => toggleSheet(false)));
+
+  /* ---------- 滚动进场 ---------- */
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  $$('.reveal').forEach(el => io.observe(el));
+
+  /* ---------- 分段按钮 / 标签页 ---------- */
+  $$('.segmented [role=tab]').forEach(tab => tab.addEventListener('click', () => {
+    $$('.segmented [role=tab]').forEach(t => t.setAttribute('aria-selected', 'false'));
+    tab.setAttribute('aria-selected', 'true');
+    $$('.code-panel').forEach(p => p.classList.remove('active'));
+    $('#tab-' + tab.dataset.tab).classList.add('active');
+  }));
+
+  /* ---------- 复制 + Snackbar ---------- */
+  const snackbar = $('#snackbar'), snackText = $('#snackText');
+  let snackTimer;
+  function showSnack(msg) {
+    snackText.textContent = msg;
+    snackbar.classList.add('show');
+    clearTimeout(snackTimer);
+    snackTimer = setTimeout(() => snackbar.classList.remove('show'), 2600);
+  }
+  $$('.copy-btn').forEach(btn => btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(btn.dataset.copy);
+      showSnack('命令已复制到剪贴板');
+    } catch {
+      const ta = document.createElement('textarea'); ta.value = btn.dataset.copy; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove(); showSnack('命令已复制到剪贴板');
+    }
+  }));
+
+  /* ---------- 架构自动推荐 ---------- */
+  (async () => {
+    let arch = null;
+    try {
+      if (navigator.userAgentData?.getHighEntropyValues) {
+        const d = await navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness']);
+        if (d.architecture === 'arm') arch = d.bitness === '64' ? 'arm64' : 'arm';
+        else if (d.architecture === 'x86' && d.bitness === '64') arch = 'amd64';
+      }
+    } catch {}
+    if (!arch) {
+      const ua = navigator.userAgent;
+      if (/aarch64|arm64/i.test(ua)) arch = 'arm64';
+      else if (/armv7|armv6|\barm\b/i.test(ua)) arch = 'arm';
+      else if (/x86_64|x64|Win64|WOW64|amd64/i.test(ua)) arch = 'amd64';
+      else if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) arch = 'arm64'; // iPadOS 伪装 Mac
+      else if (/Macintosh/.test(ua)) arch = 'amd64';
+    }
+    if (arch) {
+      const card = $(`.dl-card[data-arch="${arch}"]`);
+      if (card) {
+        card.classList.add('recommended');
+        const names = { amd64: 'x86_64', arm64: 'aarch64 / arm64', arm: 'arm / armv7l' };
+        $('#detectNote').textContent = ` 检测到你的设备可能是 ${names[arch]}，已为你高亮推荐。`;
+      }
+    }
+  })();
+
+  /* ---------- 终端演示动画 ---------- */
+  const term = $('#termBody');
+  const script = [
+    { t: 'cmd', text: './cf-helper.sh' },
+    { t: 'info', text: '[信息] 检测到系统架构: x86_64' },
+    { t: 'info', text: '[信息] 匹配二进制文件: cloudflared-linux-amd64' },
+    { t: 'warn', text: '[警告] 未找到 cloudflared，是否从 GitHub 下载最新版本? [Y/n] ', input: 'y' },
+    { t: 'ok',   text: '[成功] 下载完成，已自动添加执行权限 (chmod +x)' },
+    { t: 'ask',  text: '请输入隧道地址 (hostname): ', input: 'your-tunnel.example.com' },
+    { t: 'ask',  text: '请输入本地监听端口 [21128]: ', input: '' },
+    { t: 'ok',   text: '[成功] 隧道已建立 → localhost:21128' },
+    { t: 'dim',  text: '按 Ctrl+C 断开连接…' },
+  ];
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  let running = 0;
+  async function typeInto(el, text, speed = 55) {
+    for (const ch of text) { el.textContent += ch; await sleep(speed + Math.random() * 40); }
+  }
+  async function play() {
+    const id = ++running;
+    term.innerHTML = '';
+    for (const line of script) {
+      if (id !== running) return;
+      const ln = document.createElement('span'); ln.className = 'ln';
+      if (line.t === 'cmd') {
+        ln.innerHTML = '<span class="t-prompt">❯ </span>';
+        const c = document.createElement('span'); ln.appendChild(c);
+        const cur = document.createElement('span'); cur.className = 't-cursor'; ln.appendChild(cur);
+        term.appendChild(ln);
+        await sleep(400); await typeInto(c, line.text); await sleep(350); cur.remove();
+      } else {
+        const cls = { info: 't-info', warn: 't-warn', ok: 't-ok', dim: 't-dim', ask: '' }[line.t];
+        const label = document.createElement('span'); if (cls) label.className = cls; label.textContent = line.text;
+        ln.appendChild(label); term.appendChild(ln);
+        if (line.input !== undefined) {
+          const inp = document.createElement('span'); ln.appendChild(inp);
+          const cur = document.createElement('span'); cur.className = 't-cursor'; ln.appendChild(cur);
+          await sleep(500); await typeInto(inp, line.input, 70); await sleep(450); cur.remove();
+        } else {
+          await sleep(line.t === 'ok' ? 600 : 380);
+        }
+      }
+    }
+    const end = document.createElement('span'); end.className = 'ln';
+    end.innerHTML = '<span class="t-prompt">❯ </span><span class="t-cursor"></span>';
+    term.appendChild(end);
+  }
+  $('#replayBtn').addEventListener('click', play);
+  const termIO = new IntersectionObserver((en) => { if (en[0].isIntersecting) { play(); termIO.disconnect(); } }, { threshold: 0.3 });
+  termIO.observe(term);
+
+  /* ---------- 其他 ---------- */
+  $('#year').textContent = new Date().getFullYear();
+})();
+</script>
+</body>
+</html>
