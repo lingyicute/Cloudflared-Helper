@@ -213,7 +213,6 @@ section { padding-block: clamp(3.5rem, 8vw, 6.5rem); scroll-margin-top: 80px; }
 }
 .nav a:hover, .nav a.active { background: var(--secondary-container); color: var(--on-secondary-container); }
 .app-bar-actions { display: flex; align-items: center; gap: .25rem; }
-.app-bar-actions .nav + & { margin-left: 0; }
 .only-mobile { display: none; }
 
 /* 主题切换开关（Material Switch） */
@@ -486,6 +485,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 @media (max-width: 820px) {
   .hero .container { grid-template-columns: 1fr; }
   .nav { display: none; }
+  .app-bar-actions { margin-left: auto; }
   .only-mobile { display: inline-grid; }
   .download-grid { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr; }
@@ -500,6 +500,9 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   .hero-actions { flex-direction: column; }
   .segmented { width: 100%; }
   .segmented button { flex: 1; justify-content: center; padding: 0 .5rem; }
+}
+@media (max-width: 440px) {
+  .brand-name { display: none; }
 }
 
 /* 移动端导航抽屉（Bottom sheet） */
@@ -522,7 +525,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
       <span class="brand-logo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 .4-8.98A7 7 0 0 0 4.7 8.7 4 4 0 0 0 6 19h11.5z"/></svg>
       </span>
-      Cloudflared Helper
+      <span class="brand-name">Cloudflared Helper</span>
     </a>
     <nav class="nav" aria-label="主导航">
       <a href="#features">功能</a>
@@ -871,7 +874,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 <footer>
   <div class="container">
     <span>© <span id="year"></span> lingyicute · Cloudflared Helper · AGPL-3.0</span>
-    <span class="label-md" style="opacity:.6">Made with Material You</span>
+    <span class="label-md" style="opacity:.6">Website made with Material You ❤️</span>
     <nav class="links" aria-label="页脚链接">
       <a href="https://github.com/lingyicute/Cloudflared-Helper" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/lingyicute/Cloudflared-Helper/releases" target="_blank" rel="noopener">Releases</a>
