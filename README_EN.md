@@ -1,6 +1,6 @@
 # Cloudflared-Helper
 
-[简体中文](./README.md) | English
+[简体中文](./README.md) | [English]
 
 This is a powerful Bash script designed to simplify and automate the process of establishing TCP connections via [Cloudflare Tunnel](https://www.cloudflare.com/products/tunnel/). It is particularly useful for users who frequently need to connect to remote desktops, SSH, or other TCP services, saving you from the hassle of remembering and manually typing lengthy commands.
 

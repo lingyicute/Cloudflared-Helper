@@ -1,6 +1,6 @@
 # Cloudflared 连接助手 (Cloudflared-Helper)
 
-简体中文 | [English](./README_EN.md) 
+[简体中文] | [English](./README_EN.md) 
 
 这是一个功能强大的 Bash 脚本，旨在简化并自动化通过 [Cloudflare Tunnel](https://www.cloudflare.com/products/tunnel/) 建立 TCP 连接的过程。它特别适合需要频繁连接远程桌面、SSH 或其他 TCP 服务的用户，可以免去记忆和手动输入冗长命令的麻烦。
 
