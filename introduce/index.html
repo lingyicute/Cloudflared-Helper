@@ -454,12 +454,15 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 
 /* ---------- Snackbar ---------- */
 .snackbar {
-  position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 120%); z-index: 60; min-width: 280px; max-width: calc(100vw - 2rem);
+  position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, calc(100% + 2.5rem)); z-index: 60; min-width: 280px; max-width: calc(100vw - 2rem);
   background: var(--inverse-surface); color: var(--inverse-on-surface); padding: .9rem 1.25rem; border-radius: var(--r-xs);
-  box-shadow: var(--shadow-3); font-size: .92rem; display: flex; align-items: center; gap: 1rem; transition: transform .4s var(--ease-emph);
+  box-shadow: var(--shadow-3); font-size: .92rem; display: flex; align-items: center; gap: 1rem;
+  transition: transform .4s var(--ease-emph), visibility 0s linear .4s;
   border-radius: 8px;
+  visibility: hidden;
+  pointer-events: none;
 }
-.snackbar.show { transform: translate(-50%, 0); }
+.snackbar.show { transform: translate(-50%, 0); visibility: visible; pointer-events: auto; transition: transform .4s var(--ease-emph); }
 .snackbar b { color: var(--inverse-primary); margin-left: auto; font-weight: 700; }
 
 /* ---------- 滚动进场 ---------- */
