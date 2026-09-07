@@ -70,14 +70,15 @@ jobs:
           done
 
      # 步骤四：创建 Release 并上传打包好的文件
+
       - name: Create Release and Upload Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ github.run_number }}" release_assets/*.tar.gz \
-            --title "Release v${{ github.run_number }}" \
+          gh release create "nightly-${{ github.run_number }}" release_assets/*.tar.gz \
+            --title "Nightly No.${{ github.run_number }}" \
             --notes-file - << 'EOF'
-          自动构建的发行版 v${{ github.run_number }}
+          自动构建的发行版 No.${{ github.run_number }}
 
           此版本包含了适用于不同 CPU 架构的 `cloudflared` 二进制文件和 `cf-helper.sh` 脚本。
           下载后解压即可使用 (`cf-helper.sh` 已包含可执行权限)。
