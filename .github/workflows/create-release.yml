@@ -2,6 +2,10 @@ name: Create Release and Upload Assets
 
 on:
   push:
+    paths-ignore:
+      - "introduce/**"
+      - "scripts/**"
+      - ".github/workflows/font-subset.yml"
 
 # 定义工作流中的任务
 jobs:
