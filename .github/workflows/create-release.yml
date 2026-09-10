@@ -4,7 +4,7 @@ on:
   push:
     paths-ignore:
       - "introduce/**"
-      - "scripts/**"
+      - "introduce/**"
       - ".github/workflows/font-subset.yml"
 
 # 定义工作流中的任务
