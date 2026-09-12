@@ -129,7 +129,9 @@ if [[ "$KNOWN_PLATFORM" == true ]]; then
     if [[ ! -f "$CLOUDFLARED_BINARY" ]]; then
         echo "提示：为 '$OS/$ARCH' 设计的二进制文件不存在：$(basename "$CLOUDFLARED_BINARY")"
         if ! IFS= read -r -p "是否要自动从 GitHub 下载最新版本？ (y/n): " choice; then
-            choice="n"
+            # read 在输入末尾缺少换行符（如通过管道传入）时也会返回非零，
+            # 但此时 choice 中已包含读取到的内容；仅在确实没有任何输入时才视为取消。
+            choice="${choice:-n}"
             echo
         fi
 
@@ -220,8 +222,9 @@ echo ""
 HOSTNAME="${1:-}"
 if [[ -z "$HOSTNAME" ]]; then
     if ! IFS= read -r -p "请输入隧道地址 (hostname): " HOSTNAME; then
-        echo "错误：未能读取隧道地址。" >&2
-        exit 1
+        # 输入流提前结束（如管道输入末尾无换行符）时保留已读取到的内容；
+        # 若确实未读取到任何内容，由下方的非空校验统一处理。
+        echo
     fi
 else
     echo "已从命令行参数获取隧道地址: $HOSTNAME"
@@ -256,8 +259,12 @@ normalize_port() {
 while true; do
     if [[ -z "$PORT" ]]; then
         if ! IFS= read -r -p "请输入本地监听端口 [$DEFAULT_PORT]: " PORT; then
-            echo "错误：未能读取端口号。" >&2
-            exit 1
+            if [[ -z "$PORT" ]]; then
+                echo "错误：未能读取端口号。" >&2
+                exit 1
+            fi
+            # 输入流提前结束但已读取到内容（末尾无换行符），继续校验该值。
+            echo
         fi
         PORT=${PORT:-$DEFAULT_PORT}
     fi
