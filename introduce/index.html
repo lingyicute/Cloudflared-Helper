@@ -678,10 +678,10 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
       <div class="section-head reveal">
         <span class="eyebrow">下载</span>
         <h2 class="headline-lg" id="downloadTitle">选择你的架构</h2>
-        <p class="body-lg">发行包由 GitHub Actions 自动构建，包含 <code>cf-helper.sh</code> 与对应架构的 <code>cloudflared</code>。<span id="detectNote"></span></p>
+        <p class="body-lg">发行包由 GitHub Actions 自动构建，包含 <code>cf-helper.sh</code> 与对应平台、架构的 <code>cloudflared</code>。<span id="detectNote"></span></p>
       </div>
       <div class="download-grid">
-        <article class="dl-card reveal" data-arch="amd64">
+        <article class="dl-card reveal" data-platform="linux" data-arch="amd64">
           <div class="arch-top">
             <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
             <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
@@ -696,7 +696,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
           </a>
         </article>
-        <article class="dl-card reveal" data-arch="arm64" data-delay="1">
+        <article class="dl-card reveal" data-platform="linux" data-arch="arm64" data-delay="1">
           <div class="arch-top">
             <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
             <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
@@ -705,13 +705,13 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
             <h3>aarch64</h3>
             <div class="arch-alias mono">arm64</div>
           </div>
-          <p>适用于 64 位 ARM 设备，如树莓派 3/4/5、Apple Silicon（M1/M2/M3）Mac 等。</p>
+          <p>适用于 64 位 ARM Linux 设备，如树莓派 3/4/5 等。</p>
           <div class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>cf-helper-arm64.tar.gz</div>
           <a class="btn btn-filled ripple" href="https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm64.tar.gz">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
           </a>
         </article>
-        <article class="dl-card reveal" data-arch="arm" data-delay="2">
+        <article class="dl-card reveal" data-platform="linux" data-arch="arm" data-delay="2">
           <div class="arch-top">
             <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></svg></div>
             <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
@@ -726,10 +726,40 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
           </a>
         </article>
+        <article class="dl-card reveal" data-platform="darwin" data-arch="amd64" data-delay="1">
+          <div class="arch-top">
+            <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-2 0-3 1-4 1-2 0-4-2-6 1-2 3-1 9 1 12 1 2 3 5 5 5 1 0 2-1 4-1s3 1 4 1c2 0 4-3 5-5 .5-1 1-2 1-3-2 0-4-2-4-5s2-4 4-5c-1-2-3-4-6-4-1 0-2 1-4 1z"/><path d="M12 2c0-1 1-2 2-2"/></svg></div>
+            <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
+          </div>
+          <div>
+            <h3>macOS Intel</h3>
+            <div class="arch-alias mono">darwin-amd64</div>
+          </div>
+          <p>适用于 Intel 处理器的 Mac。</p>
+          <div class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>cf-helper-darwin-amd64.tar.gz</div>
+          <a class="btn btn-filled ripple" href="https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-darwin-amd64.tar.gz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
+          </a>
+        </article>
+        <article class="dl-card reveal" data-platform="darwin" data-arch="arm64" data-delay="2">
+          <div class="arch-top">
+            <div class="arch-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg></div>
+            <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg>为你推荐</span>
+          </div>
+          <div>
+            <h3>macOS Apple Silicon</h3>
+            <div class="arch-alias mono">darwin-arm64</div>
+          </div>
+          <p>适用于 M1/M2/M3 及更新的 Apple Silicon Mac。</p>
+          <div class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>cf-helper-darwin-arm64.tar.gz</div>
+          <a class="btn btn-filled ripple" href="https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-darwin-arm64.tar.gz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>下载
+          </a>
+        </article>
       </div>
       <div class="download-note reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span>不确定自己的架构？在终端运行 <code class="mono">uname -m</code> 即可查看。所有历史版本可在 Releases 页面找到。</span>
+        <span>不确定自己的平台和架构？在终端运行 <code class="mono">uname -s</code> 与 <code class="mono">uname -m</code> 即可查看。所有历史版本可在 Releases 页面找到。</span>
         <a href="https://github.com/lingyicute/Cloudflared-Helper/releases" target="_blank" rel="noopener">前往 Releases <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
       </div>
     </div>
@@ -913,18 +943,38 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   /* ---------- 主题：深色模式 ---------- */
   const themeSwitch = $('#themeSwitch');
   const prefersDark = matchMedia('(prefers-color-scheme: dark)');
+  // file:// 页面和隐私模式下 localStorage 可能不可用，不能因此阻断整页脚本。
+  const storage = (() => {
+    try {
+      const value = window.localStorage;
+      const key = '__cfh_storage_test__';
+      value.setItem(key, '1');
+      value.removeItem(key);
+      return value;
+    } catch {
+      return null;
+    }
+  })();
+  const readSetting = key => {
+    try { return storage?.getItem(key) || null; } catch { return null; }
+  };
+  const writeSetting = (key, value) => {
+    try { storage?.setItem(key, value); } catch { /* storage is optional */ }
+  };
   const applyTheme = (dark) => {
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
     themeSwitch.setAttribute('aria-checked', String(dark));
   };
-  const savedTheme = localStorage.getItem('cfh-theme');
+  const savedTheme = readSetting('cfh-theme');
   applyTheme(savedTheme ? savedTheme === 'dark' : prefersDark.matches);
   themeSwitch.addEventListener('click', () => {
     const dark = themeSwitch.getAttribute('aria-checked') !== 'true';
     applyTheme(dark);
-    localStorage.setItem('cfh-theme', dark ? 'dark' : 'light');
+    writeSetting('cfh-theme', dark ? 'dark' : 'light');
   });
-  prefersDark.addEventListener('change', e => { if (!localStorage.getItem('cfh-theme')) applyTheme(e.matches); });
+  const onPreferredThemeChange = e => { if (!readSetting('cfh-theme')) applyTheme(e.matches); };
+  if (prefersDark.addEventListener) prefersDark.addEventListener('change', onPreferredThemeChange);
+  else if (prefersDark.addListener) prefersDark.addListener(onPreferredThemeChange);
 
   /* ---------- 主题：动态种子色 ---------- */
   const paletteBtn = $('#paletteBtn'), paletteMenu = $('#paletteMenu');
@@ -932,7 +982,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     root.style.setProperty('--h', h);
     $$('.swatch').forEach(s => s.classList.toggle('active', s.dataset.h === String(h)));
   };
-  applyHue(localStorage.getItem('cfh-hue') || 60);
+  applyHue(readSetting('cfh-hue') || 60);
   paletteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const open = paletteMenu.classList.toggle('open');
@@ -940,7 +990,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   });
   $$('.swatch').forEach(s => s.addEventListener('click', () => {
     applyHue(s.dataset.h);
-    localStorage.setItem('cfh-hue', s.dataset.h);
+    writeSetting('cfh-hue', s.dataset.h);
     showSnack(`主题色已切换为「${s.title}」`);
   }));
   document.addEventListener('click', (e) => {
@@ -983,10 +1033,16 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   $$('a', sheet).forEach(a => a.addEventListener('click', () => toggleSheet(false)));
 
   /* ---------- 滚动进场 ---------- */
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-  $$('.reveal').forEach(el => io.observe(el));
+  let io;
+  if ('IntersectionObserver' in window) {
+    io = new IntersectionObserver((entries) => {
+      entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    $$('.reveal').forEach(el => io.observe(el));
+  } else {
+    // 老浏览器没有 IntersectionObserver 时，不要把所有内容永久隐藏。
+    $$('.reveal').forEach(el => el.classList.add('in'));
+  }
 
   /* ---------- 分段按钮 / 标签页 ---------- */
   $$('.segmented [role=tab]').forEach(tab => tab.addEventListener('click', () => {
@@ -1005,19 +1061,44 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     clearTimeout(snackTimer);
     snackTimer = setTimeout(() => snackbar.classList.remove('show'), 2600);
   }
+  async function copyText(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const copied = document.execCommand('copy');
+    ta.remove();
+    if (!copied) throw new Error('Clipboard command was rejected');
+  }
   $$('.copy-btn').forEach(btn => btn.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(btn.dataset.copy);
+      await copyText(btn.dataset.copy);
       showSnack('命令已复制到剪贴板');
     } catch {
-      const ta = document.createElement('textarea'); ta.value = btn.dataset.copy; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); ta.remove(); showSnack('命令已复制到剪贴板');
+      showSnack('复制失败，请手动复制命令');
     }
   }));
 
-  /* ---------- 架构自动推荐 ---------- */
+  /* ---------- 平台和架构自动推荐 ---------- */
   (async () => {
     let arch = null;
+    let platform = null;
+    const ua = navigator.userAgent;
+    const navigatorPlatform = navigator.platform || '';
+    const clientPlatform = navigator.userAgentData?.platform || '';
+    const platformText = `${clientPlatform} ${navigatorPlatform} ${ua}`;
+
+    const appleMobile = /iPhone|iPad|iPod/i.test(platformText);
+    if (!appleMobile && /macOS|Macintosh|Mac OS X|MacIntel/i.test(platformText)) platform = 'darwin';
+    else if (!appleMobile && /Linux|Android/i.test(platformText)) platform = 'linux';
+
     try {
       if (navigator.userAgentData?.getHighEntropyValues) {
         const d = await navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness']);
@@ -1026,20 +1107,23 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
       }
     } catch {}
     if (!arch) {
-      const ua = navigator.userAgent;
-      if (/aarch64|arm64/i.test(ua)) arch = 'arm64';
-      else if (/armv7|armv6|\barm\b/i.test(ua)) arch = 'arm';
-      else if (/x86_64|x64|Win64|WOW64|amd64/i.test(ua)) arch = 'amd64';
-      else if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) arch = 'arm64'; // iPadOS 伪装 Mac
-      else if (/Macintosh/.test(ua)) arch = 'amd64';
+      if (/aarch64|arm64|armv8/i.test(platformText)) arch = 'arm64';
+      else if (/armv7|armv6/i.test(platformText)) arch = 'arm';
+      else if (/x86_64|x64|Win64|WOW64|amd64/i.test(platformText)) arch = 'amd64';
+      // macOS 浏览器常把 Apple Silicon 伪装成 MacIntel；无法确定时不要推荐错误的 Linux 包。
+      else if (platform === 'darwin' && navigator.maxTouchPoints > 1) arch = 'arm64';
     }
-    if (arch) {
-      const card = $(`.dl-card[data-arch="${arch}"]`);
+
+    const names = { amd64: 'x86_64', arm64: 'aarch64 / arm64', arm: 'arm / armv7l' };
+    const platformNames = { linux: 'Linux', darwin: 'macOS' };
+    if (arch && platform) {
+      const card = $(`.dl-card[data-platform="${platform}"][data-arch="${arch}"]`);
       if (card) {
         card.classList.add('recommended');
-        const names = { amd64: 'x86_64', arm64: 'aarch64 / arm64', arm: 'arm / armv7l' };
-        $('#detectNote').textContent = ` 检测到你的设备可能是 ${names[arch]}，已为你高亮推荐。`;
+        $('#detectNote').textContent = ` 检测到你的设备可能是 ${platformNames[platform]} ${names[arch]}，已为你高亮推荐。`;
       }
+    } else if (platform === 'darwin') {
+      $('#detectNote').textContent = ' 检测到 macOS，但浏览器无法可靠判断 CPU 架构，请根据「关于本机」手动选择 Apple Silicon 或 Intel 发行包。';
     }
   })();
 
@@ -1091,8 +1175,12 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     term.appendChild(end);
   }
   $('#replayBtn').addEventListener('click', play);
-  const termIO = new IntersectionObserver((en) => { if (en[0].isIntersecting) { play(); termIO.disconnect(); } }, { threshold: 0.3 });
-  termIO.observe(term);
+  if ('IntersectionObserver' in window) {
+    const termIO = new IntersectionObserver((en) => { if (en[0].isIntersecting) { play(); termIO.disconnect(); } }, { threshold: 0.3 });
+    termIO.observe(term);
+  } else {
+    play();
+  }
 
   /* ---------- 其他 ---------- */
   $('#year').textContent = new Date().getFullYear();

@@ -10,7 +10,7 @@ This is a powerful Bash script designed to simplify and automate the process of 
 
 This script is more than just a simple command alias; it is a smart, user-friendly assistant tool.
 
-* **Smart Architecture Detection**: Automatically identifies your current system architecture (`x86_64`, `aarch64`, `arm`) and matches it with the correct `cloudflared` binary file.
+* **Smart Platform and Architecture Detection**: Automatically identifies Linux or macOS and the current system architecture (`x86_64`, `aarch64`, `arm`), then matches the correct `cloudflared` binary file.
 * **Automated Binary Management**:
     * **Auto-Download**: If the required `cloudflared` binary is missing, it will prompt and ask if you'd like to download the latest version from the official GitHub repository.
     * **Auto-Permissioning**: Automatically grants execution permissions (`chmod +x`) to the `cloudflared` file, resolving common "permission denied" issues.
@@ -30,22 +30,26 @@ You can download the latest packaged release directly from the links below. Thes
 
 | Architecture | Description | Download Link |
 | :--- | :--- | :--- |
-| **x86_64 / amd64** | For most 64-bit desktops and servers (Intel/AMD) | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-amd64.tar.gz) |
-| **aarch64 / arm64** | For 64-bit ARM devices (e.g., Raspberry Pi 3/4/5, M1/M2/M3 Mac) | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm64.tar.gz) |
-| **arm / armv7l** | For 32-bit ARM devices (e.g., older Raspberry Pi models) | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm.tar.gz) |
+| **Linux x86_64 / amd64** | For most 64-bit Linux desktops and servers (Intel/AMD) | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-amd64.tar.gz) |
+| **Linux aarch64 / arm64** | For 64-bit ARM Linux devices (e.g., Raspberry Pi 3/4/5) | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm64.tar.gz) |
+| **Linux arm / armv7l** | For 32-bit ARM Linux devices (e.g., older Raspberry Pi models) | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm.tar.gz) |
+| **macOS Intel** | For Intel Macs | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-darwin-amd64.tar.gz) |
+| **macOS Apple Silicon** | For M1/M2/M3 and newer Apple Silicon Macs | [**⬇️ Download**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-darwin-arm64.tar.gz) |
 
 You can also visit the [**Releases Page**](https://github.com/lingyicute/Cloudflared-Helper/releases).
 
 ## Requirements
 
+* Linux or macOS
 * `bash`
 * `curl` or `wget` (Only required if auto-downloading `cloudflared`)
+* `tar` (Only required when auto-downloading the macOS `.tgz` release; normally preinstalled on macOS)
 
 ## How to Use
 
 #### 1. Get the Script
 
-Download the `cf-helper.sh` file to your computer. It is recommended to place it in the same directory as your `cloudflared` binary.
+Download and extract the release package for your platform and architecture. It contains `cf-helper.sh` and the matching `cloudflared` binary in the same directory in new releases. You may also download only `cf-helper.sh` and place a matching `cloudflared` binary beside it.
 
 #### 2. Grant Execution Permissions
 

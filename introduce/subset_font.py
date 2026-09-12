@@ -104,9 +104,13 @@ def replace_face(html, family, filename):
 
 
 def ensure_preload(html):
-    if "fonts/nebulove-subset.woff2" in html and "rel=\"preload\"" in html:
-        return html
-    if PRELOAD.strip() in html:
+    # Do not treat an unrelated preload link as the font preload.
+    font_preload = re.compile(
+        r"<link\b(?=[^>]*\brel\s*=\s*['\"]preload['\"])"
+        r"(?=[^>]*\bhref\s*=\s*['\"]fonts/nebulove-subset\.woff2['\"])[^>]*>",
+        flags=re.I,
+    )
+    if font_preload.search(html):
         return html
     style = html.find("<style>")
     if style < 0:
@@ -121,6 +125,7 @@ def main():
     chars = collect_chars(html)
     local_font = os.environ.get("NEBULOVE_FONT")
     source_key = digest(Path(local_font)) if local_font else FONT_URL
+    source_label = str(Path(local_font).resolve()) if local_font else FONT_URL
     fingerprint = hashlib.sha256((
         source_key + digest(Path(__file__))
         + json.dumps(sorted(ord(c) for c in chars))
@@ -151,7 +156,7 @@ def main():
     HTML_PATH.write_text(new_html, encoding="utf-8")
     CACHE_PATH.write_text(json.dumps({
         "fingerprint": fingerprint,
-        "source": FONT_URL,
+        "source": source_label,
         "charset_count": len(chars),
         "outputs": {OUTPUT.name: digest(OUTPUT)},
     }, indent=2) + "\n", encoding="utf-8")

@@ -2,78 +2,77 @@ name: Create Release and Upload Assets
 
 on:
   push:
+    branches: ["main"]
     paths-ignore:
-      - "introduce/**"
       - "introduce/**"
       - ".github/workflows/font-subset.yml"
 
 # 定义工作流中的任务
 jobs:
   build-and-release:
-    # 任务名称
     name: Build and Release
-    # 运行此任务的操作系统环境
     runs-on: ubuntu-latest
-    # 为此任务授予创建 Release 和写入内容的权限
     permissions:
       contents: write
 
-    # 任务执行步骤
     steps:
-      # 步骤一：签出仓库代码
-      # 以便工作流可以访问你的 cf-helper.sh 脚本
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 步骤二：准备构建环境和变量
-      # 定义架构列表，并创建用于存放打包文件的目录
       - name: Setup Build Environment
-        id: setup
         run: |
-
-          echo "ARCHS=linux-amd64 linux-arm64 linux-arm" >> $GITHUB_ENV
+          echo "ARCHS=linux-amd64 linux-arm64 linux-arm darwin-amd64 darwin-arm64" >> "$GITHUB_ENV"
           mkdir -p release_assets
 
-      # 步骤三：下载、打包并准备发行版文件
-      # 循环处理每一种架构
       - name: Download, Package, and Prepare Assets
+        shell: bash
         run: |
+          set -euo pipefail
+
           for arch in $ARCHS; do
-            # 提取架构的简称 (amd64, arm64, arm)
-            short_arch=$(echo "$arch" | sed 's/linux-//')
-
-            echo "--- Processing architecture: ${short_arch} ---"
-
-            # 1. 下载对应架构的 cloudflared 二进制文件
-            echo "Downloading cloudflared for ${arch}..."
-            curl -L --fail --progress-bar "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-${arch}" -o "cloudflared-${arch}"
-            if [ $? -ne 0 ]; then
-              echo "Error: Download failed for ${arch}"
-              exit 1
+            if [[ "$arch" == darwin-* ]]; then
+              short_arch="${arch#darwin-}"
+              package_suffix="darwin-${short_arch}"
+              source_asset="cloudflared-${arch}.tgz"
+              package_binary="cloudflared-${arch}"
+              package_dir="cf-helper-release-${package_suffix}"
+              archive_file="cloudflared-${arch}.tgz"
+            else
+              short_arch="${arch#linux-}"
+              package_suffix="$short_arch"
+              source_asset="cloudflared-${arch}"
+              package_binary="cloudflared-${arch}"
+              package_dir="cf-helper-release-${package_suffix}"
+              archive_file="$package_binary"
             fi
 
-            # 2. 创建一个临时打包目录，以形成干净的压缩包结构
-            PKG_DIR="cf-helper-release-${short_arch}"
-            mkdir -p "${PKG_DIR}"
-            
-            # 3. 复制脚本和二进制文件到打包目录
-            cp cf-helper.sh "${PKG_DIR}/"
-            mv "cloudflared-${arch}" "${PKG_DIR}/"
+            echo "--- Processing architecture: ${arch} ---"
+            echo "Downloading ${source_asset}..."
+            curl --fail --location --show-error --retry 3 --connect-timeout 15 \
+              "https://github.com/cloudflare/cloudflared/releases/latest/download/${source_asset}" \
+              --output "$archive_file"
 
-            # 4. 在打包前为脚本添加可执行权限
-            echo "Setting execute permission on cf-helper.sh"
-            chmod +x "${PKG_DIR}/cf-helper.sh"
-            
-            # 5. 创建 .tar.gz 压缩包
-            TAR_NAME="cf-helper-${short_arch}.tar.gz"
-            echo "Creating package: ${TAR_NAME}..."
-            tar -czvf "release_assets/${TAR_NAME}" "${PKG_DIR}"
+            rm -rf "$package_dir"
+            mkdir -p "$package_dir"
+            cp cf-helper.sh "$package_dir/"
 
-            echo "Package for ${short_arch} created successfully."
-            echo "" # 添加换行以方便阅读日志
+            if [[ "$arch" == darwin-* ]]; then
+              extract_dir=$(mktemp -d)
+              tar -xzf "$archive_file" -C "$extract_dir"
+              test -f "$extract_dir/cloudflared"
+              mv "$extract_dir/cloudflared" "$package_dir/$package_binary"
+              rm -rf "$extract_dir"
+              rm -f "$archive_file"
+            else
+              mv "$archive_file" "$package_dir/$package_binary"
+            fi
+
+            chmod +x "$package_dir/cf-helper.sh" "$package_dir/$package_binary"
+
+            tar -C "$package_dir" -czf "release_assets/cf-helper-${package_suffix}.tar.gz" .
+            echo "Package for ${package_suffix} created successfully."
           done
 
-     # 步骤四：创建 Release 并上传打包好的文件
       - name: Create Release and Upload Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,11 +82,13 @@ jobs:
             --notes-file - << 'EOF'
           自动构建的发行版 No.${{ github.run_number }}
 
-          此版本包含了适用于不同 CPU 架构的 `cloudflared` 二进制文件和 `cf-helper.sh` 脚本。
-          下载后解压即可使用 (`cf-helper.sh` 已包含可执行权限)。
+          此版本包含适用于 Linux 和 macOS 不同 CPU 架构的 `cloudflared` 二进制文件和 `cf-helper.sh` 脚本。
+          下载后直接解压即可使用 (`cf-helper.sh` 已包含可执行权限)。
 
           **包含的附件:**
-          - `cf-helper-amd64.tar.gz`: 适用于标准 x86_64 架构的桌面/服务器 (Intel/AMD)
-          - `cf-helper-arm64.tar.gz`: 适用于 64 位 ARM 架构 (如树莓派 3/4/5, M1/M2 Mac)
-          - `cf-helper-arm.tar.gz`: 适用于 32 位 ARM 架构
+          - `cf-helper-amd64.tar.gz`: Linux x86_64 (Intel/AMD)
+          - `cf-helper-arm64.tar.gz`: Linux 64 位 ARM
+          - `cf-helper-arm.tar.gz`: Linux 32 位 ARM
+          - `cf-helper-darwin-amd64.tar.gz`: macOS Intel
+          - `cf-helper-darwin-arm64.tar.gz`: macOS Apple Silicon
           EOF
