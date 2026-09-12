@@ -10,7 +10,7 @@
 
 这个脚本不仅仅是一个简单的命令别名，它是一个智能的、用户友好的辅助工具。
 
-* **智能架构检测**: 自动识别您当前的系统架构（`x86_64`, `aarch64`, `arm`），并匹配正确的 `cloudflared` 二进制文件名。
+* **智能平台与架构检测**: 自动识别 Linux / macOS 及其系统架构（`x86_64`, `aarch64`, `arm`），并匹配正确的 `cloudflared` 二进制文件名。
 * **二进制文件自动管理**:
     * **自动下载**: 当脚本所需的 `cloudflared` 文件不存在时，它会提示并询问是否从 GitHub 官方仓库下载最新版本。
     * **自动授权**: 自动为 `cloudflared` 文件添加执行权限 (`chmod +x`)，解决“权限不足”的常见问题。
@@ -30,22 +30,26 @@
 
 | 架构 | 描述 | 下载链接 |
 | :--- | :--- | :--- |
-| **x86_64 / amd64** | 适用于绝大多数 64 位桌面电脑和服务器 (Intel/AMD) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-amd64.tar.gz) |
-| **aarch64 / arm64** | 适用于 64 位 ARM 设备 (如 树莓派 3/4/5, M1/M2/M3 Mac 等) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm64.tar.gz) |
-| **arm / armv7l** | 适用于 32 位 ARM 设备 (如 旧版树莓派) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm.tar.gz) |
+| **Linux x86_64 / amd64** | 适用于绝大多数 64 位 Linux 桌面电脑和服务器 (Intel/AMD) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-amd64.tar.gz) |
+| **Linux aarch64 / arm64** | 适用于 64 位 ARM Linux 设备 (如树莓派 3/4/5) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm64.tar.gz) |
+| **Linux arm / armv7l** | 适用于 32 位 ARM Linux 设备 (如旧版树莓派) | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-arm.tar.gz) |
+| **macOS Intel** | 适用于 Intel Mac | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-darwin-amd64.tar.gz) |
+| **macOS Apple Silicon** | 适用于 M1/M2/M3 及更新的 Apple Silicon Mac | [**⬇️ 下载**](https://github.com/lingyicute/Cloudflared-Helper/releases/latest/download/cf-helper-darwin-arm64.tar.gz) |
 
 您也可以访问 [**Releases 页面**](https://github.com/lingyicute/Cloudflared-Helper/releases)。
 
 ## 环境要求
 
+* Linux 或 macOS
 * `bash`
 * `curl` 或 `wget` (仅在需要自动下载 `cloudflared` 时需要)
+* `tar` (仅在 macOS 自动下载 `.tgz` 发行包时需要；macOS 通常已自带)
 
 ## 如何使用
 
 #### 1. 获取脚本
 
-将 `cf-helper.sh` 文件下载到您的电脑上，并建议将其与您的 `cloudflared` 二进制文件放在同一个目录中。
+下载对应系统和架构的发行包并解压。发行包包含 `cf-helper.sh` 和对应的 `cloudflared` 二进制文件；新版本解压后两者位于同一目录。也可以只下载 `cf-helper.sh`，再将手动下载的匹配版本 `cloudflared` 放在脚本同一目录中。
 
 #### 2. 授予执行权限
 
