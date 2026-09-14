@@ -8,6 +8,17 @@
 #  - 增加了对周知端口 (< 1024) 的警告
 # ==============================================================================
 
+# 本脚本大量使用 bash 特性（[[ ]]、BASH_SOURCE、BASH_REMATCH、EUID …）。
+# 若被 `sh cf-helper.sh` 这样调用，直接用 bash 重新执行自身，
+# 否则会抛出一连串 "[[: not found" / "Bad substitution" 之类的误导性错误。
+if [ -z "${BASH_VERSION:-}" ]; then
+    if command -v bash >/dev/null 2>&1; then
+        exec bash "$0" "$@"
+    fi
+    echo "错误：本脚本需要 bash 才能运行，请先安装 bash。" >&2
+    exit 1
+fi
+
 set -euo pipefail
 
 DEFAULT_PORT=21128
@@ -83,45 +94,70 @@ case "${OS}:${ARCH}" in
         ;;
 esac
 
+# 下载被中断（Ctrl-C、终端断开）时，mktemp 出来的半成品不会自己消失，
+# 会在脚本目录里留下一堆 cloudflared-*.tmp.XXXXXX。用 trap 兜底清理。
+DOWNLOAD_TMP=""
+EXTRACT_DIR=""
+cleanup_temp() {
+    if [[ -n "$DOWNLOAD_TMP" ]]; then
+        rm -f "$DOWNLOAD_TMP"
+        DOWNLOAD_TMP=""
+    fi
+    if [[ -n "${EXTRACT_DIR:-}" ]]; then
+        rm -rf "$EXTRACT_DIR"
+        EXTRACT_DIR=""
+    fi
+}
+trap cleanup_temp EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+
 # 下载到临时文件后再原子替换目标，避免中断后留下一个看似可用的残缺文件
 download_file() {
     local url="$1"
     local destination="$2"
-    local tmp_file
 
-    if ! tmp_file=$(mktemp "${destination}.tmp.XXXXXX"); then
+    if ! DOWNLOAD_TMP=$(mktemp "${destination}.tmp.XXXXXX"); then
         echo "错误：无法在目标目录创建临时文件：$destination" >&2
         return 1
     fi
+    local tmp_file="$DOWNLOAD_TMP"
 
     if command -v curl >/dev/null 2>&1; then
         if ! curl --fail --location --show-error --retry 3 --connect-timeout 15 \
             --output "$tmp_file" "$url"; then
             rm -f "$tmp_file"
+            DOWNLOAD_TMP=""
             return 1
         fi
     elif command -v wget >/dev/null 2>&1; then
         if ! wget --tries=3 --timeout=15 --output-document="$tmp_file" "$url"; then
             rm -f "$tmp_file"
+            DOWNLOAD_TMP=""
             return 1
         fi
     else
         echo "错误：需要 curl 或 wget 来下载文件，但两者都未安装。" >&2
         rm -f "$tmp_file"
+        DOWNLOAD_TMP=""
         return 1
     fi
 
     if [[ ! -s "$tmp_file" ]]; then
         echo "错误：下载结果为空。" >&2
         rm -f "$tmp_file"
+        DOWNLOAD_TMP=""
         return 1
     fi
 
     if ! mv -f "$tmp_file" "$destination"; then
         echo "错误：无法将下载结果写入 '$destination'。" >&2
         rm -f "$tmp_file"
+        DOWNLOAD_TMP=""
         return 1
     fi
+    DOWNLOAD_TMP=""
 }
 
 # 3. 根据架构类型处理二进制文件
@@ -220,20 +256,65 @@ echo ""
 # 5. 获取并验证连接参数
 # -- 获取 Hostname --
 HOSTNAME="${1:-}"
-if [[ -z "$HOSTNAME" ]]; then
-    if ! IFS= read -r -p "请输入隧道地址 (hostname): " HOSTNAME; then
-        # 输入流提前结束（如管道输入末尾无换行符）时保留已读取到的内容；
-        # 若确实未读取到任何内容，由下方的非空校验统一处理。
-        echo
-    fi
-else
+if [[ -n "$HOSTNAME" ]]; then
     echo "已从命令行参数获取隧道地址: $HOSTNAME"
 fi
 
-if [[ -z "$HOSTNAME" ]]; then
-    echo "错误：隧道地址不能为空。" >&2
-    exit 1
-fi
+# 去掉首尾空白并挡掉明显不可能成为主机名的输入。cloudflared 会把该值拼成
+# https://<hostname>，只要含空格就会报 `invalid character " " in host name`
+# 并吐出一大段帮助文本，而复制粘贴时顺手带上空格/换行是非常常见的。
+normalize_hostname() {
+    local value="$1"
+
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+
+    if [[ -z "$value" ]]; then
+        return 1
+    fi
+    # 中间的空白同样会让 cloudflared 解析失败。
+    if [[ "$value" == *[[:space:]]* ]]; then
+        return 1
+    fi
+    # 以 '-' 开头的输入会被下游当成命令行选项。
+    if [[ "$value" == -* ]]; then
+        return 1
+    fi
+    # '/' '?' '#' '@' 会让该值被解析成路径/查询/片段/用户信息，而不是主机名。
+    if [[ "$value" == *[/\?#@]* ]]; then
+        return 1
+    fi
+
+    HOSTNAME="$value"
+}
+
+# 循环直到获得一个可用的隧道地址，行为与下面的端口号处理保持一致。
+hostname_eof=false
+while true; do
+    if [[ -z "$HOSTNAME" ]]; then
+        if ! IFS= read -r -p "请输入隧道地址 (hostname): " HOSTNAME; then
+            # 输入流提前结束（如管道输入末尾无换行符）时保留已读取到的内容。
+            hostname_eof=true
+            echo
+        fi
+    fi
+
+    raw_hostname="$HOSTNAME"
+    if ! normalize_hostname "$HOSTNAME"; then
+        if [[ -z "${HOSTNAME//[[:space:]]/}" ]]; then
+            echo "错误：隧道地址不能为空。" >&2
+        else
+            echo "错误：隧道地址 '$raw_hostname' 含有空格或非法字符，请重新输入。" >&2
+        fi
+        # 输入流已经关闭，无法再次询问。
+        if [[ "$hostname_eof" == true ]]; then
+            exit 1
+        fi
+        HOSTNAME=""
+        continue
+    fi
+    break
+done
 
 # -- 获取并验证 Port --
 PORT="${2:-}"
@@ -256,15 +337,19 @@ normalize_port() {
 }
 
 # 循环直到获得一个有效的端口号。
+# port_allow_default：只有"从未提供过端口"时，输入流结束才回落到默认端口。
+# 用户明确给过端口却无效时，不应该悄悄换成另一个端口连上去。
+port_allow_default=true
 while true; do
     if [[ -z "$PORT" ]]; then
         if ! IFS= read -r -p "请输入本地监听端口 [$DEFAULT_PORT]: " PORT; then
-            if [[ -z "$PORT" ]]; then
+            # 输入流提前结束（管道末尾缺少换行符，或用户直接按下 Ctrl-D）：
+            # 已读取到的内容照常校验；什么都没读到就按提示采用默认端口。
+            echo
+            if [[ -z "$PORT" && "$port_allow_default" != true ]]; then
                 echo "错误：未能读取端口号。" >&2
                 exit 1
             fi
-            # 输入流提前结束但已读取到内容（末尾无换行符），继续校验该值。
-            echo
         fi
         PORT=${PORT:-$DEFAULT_PORT}
     fi
@@ -273,6 +358,7 @@ while true; do
     if ! normalize_port "$PORT"; then
         echo "错误：端口号 '$raw_port' 必须是 1 到 65535 之间的十进制数字。" >&2
         PORT=""
+        port_allow_default=false
         continue
     fi
 

@@ -593,7 +593,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
         </div>
       </div>
 
-      <div class="terminal reveal" data-delay="1" aria-label="脚本运行演示">
+      <div class="terminal reveal" data-delay="1" role="group" aria-label="脚本运行演示">
         <div class="terminal-bar"><i></i><i></i><i></i><span>bash — cf-helper.sh</span></div>
         <div class="terminal-body" id="termBody"></div>
         <button class="terminal-replay ripple" id="replayBtn" aria-label="重新播放演示">
@@ -791,12 +791,12 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 
         <div class="reveal" data-delay="1">
           <div class="segmented" role="tablist" aria-label="使用方式">
-            <button role="tab" aria-selected="true" data-tab="interactive" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>交互模式</button>
-            <button role="tab" aria-selected="false" data-tab="args" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>参数模式</button>
-            <button role="tab" aria-selected="false" data-tab="help" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>获取帮助</button>
+            <button role="tab" id="tabbtn-interactive" aria-selected="true" aria-controls="tab-interactive" data-tab="interactive" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>交互模式</button>
+            <button role="tab" id="tabbtn-args" aria-selected="false" aria-controls="tab-args" data-tab="args" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>参数模式</button>
+            <button role="tab" id="tabbtn-help" aria-selected="false" aria-controls="tab-help" data-tab="help" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>获取帮助</button>
           </div>
 
-          <div class="code-panel active" id="tab-interactive" role="tabpanel">
+          <div class="code-panel active" id="tab-interactive" role="tabpanel" aria-labelledby="tabbtn-interactive" tabindex="0">
             <p>推荐方式。直接运行脚本，它会引导你完成每一步。</p>
             <div class="code-block"><button class="copy-btn ripple" data-copy="./cf-helper.sh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button><pre><span class="kw">./cf-helper.sh</span>
 <span class="cm">请输入隧道地址 (hostname):</span> <span class="str">your-tunnel.example.com</span>
@@ -807,7 +807,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
             </div>
           </div>
 
-          <div class="code-panel" id="tab-args" role="tabpanel">
+          <div class="code-panel" id="tab-args" role="tabpanel" aria-labelledby="tabbtn-args" tabindex="0">
             <p>快速方式。直接在命令后提供所有必需参数，适合熟练用户或脚本集成。</p>
             <div class="code-block"><button class="copy-btn ripple" data-copy="./cf-helper.sh your-tunnel.example.com 21128"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button><pre><span class="cm"># 用法: ./cf-helper.sh [HOSTNAME] [PORT]</span>
 <span class="cm"># 示例:</span>
@@ -817,7 +817,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 <span class="kw">alias</span> nas=<span class="str">'~/cf-helper/cf-helper.sh nas.example.com 3389'</span></pre></div>
           </div>
 
-          <div class="code-panel" id="tab-help" role="tabpanel">
+          <div class="code-panel" id="tab-help" role="tabpanel" aria-labelledby="tabbtn-help" tabindex="0">
             <p>查看所有可用的命令和说明。</p>
             <div class="code-block"><button class="copy-btn ripple" data-copy="./cf-helper.sh --help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button><pre><span class="kw">./cf-helper.sh</span> <span class="str">--help</span>
 <span class="cm"># 或简写</span>
@@ -983,18 +983,23 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     $$('.swatch').forEach(s => s.classList.toggle('active', s.dataset.h === String(h)));
   };
   applyHue(readSetting('cfh-hue') || 60);
+  const setPaletteOpen = (open) => {
+    paletteMenu.classList.toggle('open', open);
+    paletteBtn.setAttribute('aria-expanded', String(open));
+  };
   paletteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const open = paletteMenu.classList.toggle('open');
-    paletteBtn.setAttribute('aria-expanded', String(open));
+    setPaletteOpen(!paletteMenu.classList.contains('open'));
   });
   $$('.swatch').forEach(s => s.addEventListener('click', () => {
     applyHue(s.dataset.h);
     writeSetting('cfh-hue', s.dataset.h);
+    // 色板位于 #paletteMenu 内部，下面的点击外部关闭逻辑不会命中它，需在此显式收起。
+    setPaletteOpen(false);
     showSnack(`主题色已切换为「${s.title}」`);
   }));
   document.addEventListener('click', (e) => {
-    if (!paletteMenu.contains(e.target)) { paletteMenu.classList.remove('open'); paletteBtn.setAttribute('aria-expanded', 'false'); }
+    if (!paletteMenu.contains(e.target)) setPaletteOpen(false);
   });
 
   /* ---------- 涟漪 ---------- */
@@ -1133,7 +1138,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     { t: 'cmd', text: './cf-helper.sh' },
     { t: 'info', text: '[信息] 检测到系统架构: x86_64' },
     { t: 'info', text: '[信息] 匹配二进制文件: cloudflared-linux-amd64' },
-    { t: 'warn', text: '[警告] 未找到 cloudflared，是否从 GitHub 下载最新版本? [Y/n] ', input: 'y' },
+    { t: 'warn', text: '[警告] 未找到 cloudflared，是否从 GitHub 下载最新版本? (y/n) ', input: 'y' },
     { t: 'ok',   text: '[成功] 下载完成，已自动添加执行权限 (chmod +x)' },
     { t: 'ask',  text: '请输入隧道地址 (hostname): ', input: 'your-tunnel.example.com' },
     { t: 'ask',  text: '请输入本地监听端口 [21128]: ', input: '' },
