@@ -327,9 +327,9 @@ html[data-theme="dark"] .t-prompt { color: var(--primary); }
 .feature-card h3 { margin-bottom: .25rem; }
 .feature-card p { font-size: .95rem; opacity: .85; }
 .feature-card ul { list-style: none; display: grid; gap: .5rem; font-size: .92rem; margin-top: .25rem; }
-.feature-card ul li { display: flex; gap: .5rem; align-items: flex-start; opacity: .9; }
-.feature-card ul li::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; margin-top: .55em; }
-.feature-card kbd { font-family: inherit; background: oklch(0 0 0 / .08); padding: .05em .4em; border-radius: 6px; font-size: .9em; }
+.feature-card ul li { position: relative; padding-left: 1rem; opacity: .9; }
+.feature-card ul li::before { content: ''; position: absolute; left: 0; top: .55em; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; }
+.feature-card kbd { font-family: inherit; background: oklch(0 0 0 / .08); padding: .05em .4em; border-radius: 6px; font-size: .9em; white-space: nowrap; }
 html[data-theme="dark"] .feature-card kbd { background: oklch(1 0 0 / .1); }
 
 /* ---------- 下载 ---------- */
@@ -625,8 +625,8 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
           <div>
             <h3 class="title-lg">二进制文件自动管理</h3>
             <ul>
-              <li><b>自动下载</b>：缺少 <kbd>cloudflared</kbd> 时，询问并从 GitHub 官方仓库拉取最新版本。</li>
-              <li><b>自动授权</b>：自动执行 <kbd>chmod +x</kbd>，彻底解决"权限不足"的经典报错。</li>
+              <li><span><b>自动下载</b>：缺少 <kbd>cloudflared</kbd> 时，询问并从 GitHub 官方仓库拉取最新版本。</span></li>
+              <li><span><b>自动授权</b>：自动执行 <kbd>chmod +x</kbd>，彻底解决"权限不足"的经典报错。</span></li>
             </ul>
           </div>
         </article>
@@ -649,8 +649,8 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
           <div>
             <h3 class="title-lg">强大的输入验证</h3>
             <ul>
-              <li>端口必须是 <kbd>1–65535</kbd> 内的有效数字。</li>
-              <li>端口低于 <kbd>1024</kbd> 时贴心提醒可能需要 <kbd>sudo</kbd>。</li>
+              <li><span>端口必须是 <kbd>1–65535</kbd> 内的有效数字。</span></li>
+              <li><span>端口低于 <kbd>1024</kbd> 时贴心提醒可能需要 <kbd>sudo</kbd>。</span></li>
             </ul>
           </div>
         </article>
