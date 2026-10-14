@@ -233,9 +233,13 @@ section { padding-block: clamp(3.5rem, 8vw, 6.5rem); scroll-margin-top: 80px; }
 .palette-menu {
   position: absolute; right: 0; top: calc(100% + 8px); background: var(--surface-container); border-radius: var(--r-lg);
   padding: .75rem; box-shadow: var(--shadow-2); display: flex; gap: .5rem; opacity: 0; pointer-events: none;
-  transform: translateY(-6px) scale(.96); transform-origin: top right; transition: opacity .2s, transform .25s var(--ease-emph);
+  /* 仅靠 opacity:0 + pointer-events:none 隐藏时，6 个色板按钮仍在 Tab 顺序里，键盘用户会"聚焦到看不见的按钮"。
+     用 visibility 把它们真正移出可访问性树，并延迟到淡出动画结束后再切换。 */
+  visibility: hidden;
+  transform: translateY(-6px) scale(.96); transform-origin: top right;
+  transition: opacity .2s, transform .25s var(--ease-emph), visibility 0s linear .25s;
 }
-.palette-menu.open { opacity: 1; pointer-events: auto; transform: none; }
+.palette-menu.open { opacity: 1; pointer-events: auto; transform: none; visibility: visible; transition: opacity .2s, transform .25s var(--ease-emph); }
 .swatch { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; background: oklch(0.6 0.15 var(--sw)); position: relative; transition: transform .2s var(--ease-emph); }
 .swatch:hover { transform: scale(1.12); }
 .swatch.active::after { content: ''; position: absolute; inset: -5px; border: 2px solid var(--primary); border-radius: 50%; }
@@ -455,10 +459,9 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 /* ---------- Snackbar ---------- */
 .snackbar {
   position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, calc(100% + 2.5rem)); z-index: 60; min-width: 280px; max-width: calc(100vw - 2rem);
-  background: var(--inverse-surface); color: var(--inverse-on-surface); padding: .9rem 1.25rem; border-radius: var(--r-xs);
+  background: var(--inverse-surface); color: var(--inverse-on-surface); padding: .9rem 1.25rem; border-radius: var(--r-sm);
   box-shadow: var(--shadow-3); font-size: .92rem; display: flex; align-items: center; gap: 1rem;
   transition: transform .4s var(--ease-emph), visibility 0s linear .4s;
-  border-radius: 8px;
   visibility: hidden;
   pointer-events: none;
 }
@@ -509,8 +512,8 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 /* 移动端导航抽屉（Bottom sheet） */
 .sheet-scrim { position: fixed; inset: 0; background: oklch(0 0 0 / .4); z-index: 70; opacity: 0; pointer-events: none; transition: opacity .3s; }
 .sheet-scrim.open { opacity: 1; pointer-events: auto; }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 71; background: var(--surface-container-low); border-radius: var(--r-xl) var(--r-xl) 0 0; padding: .75rem 1.25rem 2rem; transform: translateY(100%); transition: transform .4s var(--ease-emph); }
-.sheet.open { transform: none; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 71; background: var(--surface-container-low); border-radius: var(--r-xl) var(--r-xl) 0 0; padding: .75rem 1.25rem 2rem; transform: translateY(100%); visibility: hidden; transition: transform .4s var(--ease-emph), visibility 0s linear .4s; }
+.sheet.open { transform: none; visibility: visible; transition: transform .4s var(--ease-emph); }
 .sheet .handle { width: 32px; height: 4px; border-radius: 2px; background: var(--outline); margin: 0 auto 1rem; }
 .sheet a { display: flex; align-items: center; gap: .85rem; padding: .9rem 1rem; border-radius: var(--r-full); font-weight: 600; transition: background-color .25s; }
 .sheet a:hover { background: var(--secondary-container); color: var(--on-secondary-container); }
@@ -539,7 +542,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
         <button class="icon-btn ripple" id="paletteBtn" aria-label="切换主题色" title="主题色" aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.4-.15-.75-.4-1-.25-.27-.4-.62-.4-1 0-.83.67-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.97-4.5-9-10-9z"/></svg>
         </button>
-        <div class="palette-menu" id="paletteMenu" role="menu" aria-label="选择主题色">
+        <div class="palette-menu" id="paletteMenu" role="group" aria-label="选择主题色">
           <button class="swatch" style="--sw:60" data-h="60" aria-label="橙色" title="橙色"></button>
           <button class="swatch" style="--sw:260" data-h="260" aria-label="蓝色" title="蓝色"></button>
           <button class="swatch" style="--sw:150" data-h="150" aria-label="绿色" title="绿色"></button>
@@ -556,7 +559,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
       <a class="icon-btn ripple" href="https://github.com/lingyicute/Cloudflared-Helper" target="_blank" rel="noopener" aria-label="GitHub 仓库" title="GitHub">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
       </a>
-      <button class="icon-btn ripple only-mobile" id="menuBtn" aria-label="打开菜单">
+      <button class="icon-btn ripple only-mobile" id="menuBtn" aria-label="打开菜单" aria-expanded="false" aria-controls="sheet">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
     </div>
@@ -792,8 +795,8 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
         <div class="reveal" data-delay="1">
           <div class="segmented" role="tablist" aria-label="使用方式">
             <button role="tab" id="tabbtn-interactive" aria-selected="true" aria-controls="tab-interactive" data-tab="interactive" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>交互模式</button>
-            <button role="tab" id="tabbtn-args" aria-selected="false" aria-controls="tab-args" data-tab="args" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>参数模式</button>
-            <button role="tab" id="tabbtn-help" aria-selected="false" aria-controls="tab-help" data-tab="help" class="ripple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>获取帮助</button>
+            <button role="tab" id="tabbtn-args" aria-selected="false" aria-controls="tab-args" data-tab="args" class="ripple" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>参数模式</button>
+            <button role="tab" id="tabbtn-help" aria-selected="false" aria-controls="tab-help" data-tab="help" class="ripple" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>获取帮助</button>
           </div>
 
           <div class="code-panel active" id="tab-interactive" role="tabpanel" aria-labelledby="tabbtn-interactive" tabindex="0">
@@ -939,6 +942,8 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const root = document.documentElement;
+  // CSS 里的 prefers-reduced-motion 规则管不到 JS 驱动的打字动画和 scrollTo({behavior:'smooth'})，这里单独处理。
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- 主题：深色模式 ---------- */
   const themeSwitch = $('#themeSwitch');
@@ -982,7 +987,9 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     root.style.setProperty('--h', h);
     $$('.swatch').forEach(s => s.classList.toggle('active', s.dataset.h === String(h)));
   };
-  applyHue(readSetting('cfh-hue') || 60);
+  // localStorage 里的值可能被手改或来自旧版本；非法的 --h 会让所有 oklch() 颜色失效、整页变成无样式的黑白。
+  const parseHue = (v) => { const n = Number.parseFloat(v); return Number.isFinite(n) ? ((n % 360) + 360) % 360 : null; };
+  applyHue(parseHue(readSetting('cfh-hue')) ?? 60);
   const setPaletteOpen = (open) => {
     paletteMenu.classList.toggle('open', open);
     paletteBtn.setAttribute('aria-expanded', String(open));
@@ -1028,14 +1035,24 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
   };
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
-  fab.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
+  fab.addEventListener('click', () => scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
 
   /* ---------- 移动端底部菜单 ---------- */
-  const sheet = $('#sheet'), scrim = $('#sheetScrim');
-  const toggleSheet = (open) => { sheet.classList.toggle('open', open); scrim.classList.toggle('open', open); };
-  $('#menuBtn').addEventListener('click', () => toggleSheet(true));
+  const sheet = $('#sheet'), scrim = $('#sheetScrim'), menuBtn = $('#menuBtn');
+  const toggleSheet = (open) => {
+    sheet.classList.toggle('open', open);
+    scrim.classList.toggle('open', open);
+    menuBtn.setAttribute('aria-expanded', String(open));
+  };
+  menuBtn.addEventListener('click', () => toggleSheet(true));
   scrim.addEventListener('click', () => toggleSheet(false));
   $$('a', sheet).forEach(a => a.addEventListener('click', () => toggleSheet(false)));
+  // Esc 关闭浮层，并把焦点交还给打开它的按钮（WAI-ARIA 对话框/菜单的基本约定）。
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (paletteMenu.classList.contains('open')) { setPaletteOpen(false); paletteBtn.focus(); }
+    if (sheet.classList.contains('open')) { toggleSheet(false); menuBtn.focus(); }
+  });
 
   /* ---------- 滚动进场 ---------- */
   let io;
@@ -1050,12 +1067,24 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   }
 
   /* ---------- 分段按钮 / 标签页 ---------- */
-  $$('.segmented [role=tab]').forEach(tab => tab.addEventListener('click', () => {
-    $$('.segmented [role=tab]').forEach(t => t.setAttribute('aria-selected', 'false'));
-    tab.setAttribute('aria-selected', 'true');
+  const tabs = $$('.segmented [role=tab]');
+  const selectTab = (tab) => {
+    tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; });
     $$('.code-panel').forEach(p => p.classList.remove('active'));
     $('#tab-' + tab.dataset.tab).classList.add('active');
-  }));
+  };
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => selectTab(tab));
+    // role="tablist" 约定：Tab 键只停在当前标签，左右方向键 / Home / End 在标签间移动。
+    tab.addEventListener('keydown', (e) => {
+      const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      const target = tabs[(next + tabs.length) % tabs.length];
+      target.focus();
+      selectTab(target);
+    });
+  });
 
   /* ---------- 复制 + Snackbar ---------- */
   const snackbar = $('#snackbar'), snackText = $('#snackText');
@@ -1134,20 +1163,25 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 
   /* ---------- 终端演示动画 ---------- */
   const term = $('#termBody');
+  // 下面的文案与 cf-helper.sh 的真实输出保持一致（最后两行是 cloudflared 的日志与注释），
+  // 不要在演示里编造脚本并不会打印的 "[成功] 隧道已建立" 之类的提示，以免用户对照终端时产生困惑。
   const script = [
-    { t: 'cmd', text: './cf-helper.sh' },
-    { t: 'info', text: '[信息] 检测到系统架构: x86_64' },
-    { t: 'info', text: '[信息] 匹配二进制文件: cloudflared-linux-amd64' },
-    { t: 'warn', text: '[警告] 未找到 cloudflared，是否从 GitHub 下载最新版本? (y/n) ', input: 'y' },
-    { t: 'ok',   text: '[成功] 下载完成，已自动添加执行权限 (chmod +x)' },
+    { t: 'cmd',  text: './cf-helper.sh' },
+    { t: 'warn', text: "提示：为 'Linux/x86_64' 设计的二进制文件不存在：cloudflared-linux-amd64" },
+    { t: 'ask',  text: '是否要自动从 GitHub 下载最新版本？ (y/n): ', input: 'y' },
+    { t: 'dim',  text: '正在从 https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 下载...' },
+    { t: 'ok',   text: '下载成功。' },
+    { t: 'info', text: "脚本已启动，将使用 '~/cf-helper/cloudflared-linux-amd64' 执行连接。" },
     { t: 'ask',  text: '请输入隧道地址 (hostname): ', input: 'your-tunnel.example.com' },
     { t: 'ask',  text: '请输入本地监听端口 [21128]: ', input: '' },
-    { t: 'ok',   text: '[成功] 隧道已建立 → localhost:21128' },
-    { t: 'dim',  text: '按 Ctrl+C 断开连接…' },
+    { t: 'ok',   text: 'INF Start Websocket listener host=127.0.0.1:21128' },
+    { t: 'dim',  text: '# 现在用任意客户端连接 localhost:21128 即可，Ctrl+C 断开' },
   ];
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // 用户开启"减少动态效果"时不再逐字打字，直接整段呈现。
+  const sleep = ms => new Promise(r => setTimeout(r, reduceMotion ? 0 : ms));
   let running = 0;
   async function typeInto(el, text, speed = 55) {
+    if (reduceMotion) { el.textContent += text; return; }
     for (const ch of text) { el.textContent += ch; await sleep(speed + Math.random() * 40); }
   }
   async function play() {
