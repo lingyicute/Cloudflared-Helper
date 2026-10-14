@@ -244,7 +244,9 @@ fi
 if [[ ! -x "$CLOUDFLARED_BINARY" ]]; then
     echo "提示：文件 '$CLOUDFLARED_BINARY' 不是可执行文件，正在尝试添加权限..."
     if ! chmod +x "$CLOUDFLARED_BINARY" || [[ ! -x "$CLOUDFLARED_BINARY" ]]; then
-        echo "错误：无法为文件 '$CLOUDFLARED_BINARY' 设置可执行权限。请手动执行 'chmod +x "$CLOUDFLARED_BINARY"'。" >&2
+        # 注意：这里不能在双引号字符串内再写一对双引号，否则会把路径"解引用"，
+        # 含空格的路径会被拆开，用户照着提示复制出来的命令也会少掉引号。
+        echo "错误：无法为文件 '$CLOUDFLARED_BINARY' 设置可执行权限。请手动执行 chmod +x '$CLOUDFLARED_BINARY'。" >&2
         exit 1
     fi
 fi
