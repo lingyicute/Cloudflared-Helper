@@ -6,6 +6,17 @@ on:
     paths-ignore:
       - "introduce/**"
       - ".github/workflows/font-subset.yml"
+      # 仅改文档不会改变发行包内容，没必要再切一个 nightly。
+      - "**.md"
+      - "LICENSE"
+  # 允许手动触发：上游 cloudflared 发新版时，不用再靠一个空提交来刷新打包。
+  workflow_dispatch:
+
+# 两次推送靠得很近时不要并行发布，否则 run_number 更大的那个可能先完成，
+# 导致 "latest" 指向更旧的提交。
+concurrency:
+  group: create-release
+  cancel-in-progress: false
 
 # 定义工作流中的任务
 jobs:
@@ -23,6 +34,21 @@ jobs:
         run: |
           echo "ARCHS=linux-amd64 linux-arm64 linux-arm darwin-amd64 darwin-arm64" >> "$GITHUB_ENV"
           mkdir -p release_assets
+
+      # 先把"最新版本"解析成一个确定的 tag，再用这个 tag 下载全部五个架构。
+      # 直接逐个请求 releases/latest/download/... 时，若循环中途上游恰好发版，
+      # 同一个 nightly 里就会混进两个不同版本的 cloudflared。
+      # 顺便从 API 取出每个附件的 sha256 digest，用于下载后校验。
+      - name: Resolve latest cloudflared release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api repos/cloudflare/cloudflared/releases/latest > upstream-release.json
+          tag=$(jq -r '.tag_name' upstream-release.json)
+          test -n "$tag" && test "$tag" != "null"
+          echo "CLOUDFLARED_TAG=$tag" >> "$GITHUB_ENV"
+          echo "Upstream cloudflared release: $tag"
 
       - name: Download, Package, and Prepare Assets
         shell: bash
@@ -47,10 +73,21 @@ jobs:
             fi
 
             echo "--- Processing architecture: ${arch} ---"
-            echo "Downloading ${source_asset}..."
+            echo "Downloading ${source_asset} (${CLOUDFLARED_TAG})..."
             curl --fail --location --show-error --retry 3 --connect-timeout 15 \
-              "https://github.com/cloudflare/cloudflared/releases/latest/download/${source_asset}" \
+              --proto '=https' --proto-redir '=https' \
+              "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_TAG}/${source_asset}" \
               --output "$archive_file"
+
+            # 用 GitHub 为每个附件记录的 sha256 校验下载结果，防止截断/篡改的文件被打进发行包。
+            expected=$(jq -r --arg name "$source_asset" \
+              '.assets[] | select(.name == $name) | .digest // empty' upstream-release.json)
+            if [[ -n "$expected" ]]; then
+              expected="${expected#sha256:}"
+              echo "${expected}  ${archive_file}" | sha256sum --check --strict
+            else
+              echo "::warning::No sha256 digest published for ${source_asset}; skipping verification."
+            fi
 
             rm -rf "$package_dir"
             mkdir -p "$package_dir"
@@ -73,22 +110,28 @@ jobs:
             echo "Package for ${package_suffix} created successfully."
           done
 
+          # 在 runner 上实际跑一下 amd64 版本，确认打进去的确实是可执行且版本正确的二进制。
+          ./cf-helper-release-amd64/cloudflared-linux-amd64 --version
+
       - name: Create Release and Upload Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "nightly-${{ github.run_number }}" release_assets/*.tar.gz \
-            --title "Nightly No.${{ github.run_number }}" \
-            --notes-file - << 'EOF'
+            --title "Nightly No.${{ github.run_number }} (cloudflared ${CLOUDFLARED_TAG})" \
+            --notes-file - << EOF
           自动构建的发行版 No.${{ github.run_number }}
 
-          此版本包含适用于 Linux 和 macOS 不同 CPU 架构的 `cloudflared` 二进制文件和 `cf-helper.sh` 脚本。
-          下载后直接解压即可使用 (`cf-helper.sh` 已包含可执行权限)。
+          此版本包含适用于 Linux 和 macOS 不同 CPU 架构的 \`cloudflared\` 二进制文件和 \`cf-helper.sh\` 脚本。
+          下载后直接解压即可使用 (\`cf-helper.sh\` 已包含可执行权限)。
+
+          **内置 cloudflared 版本:** [${CLOUDFLARED_TAG}](https://github.com/cloudflare/cloudflared/releases/tag/${CLOUDFLARED_TAG})（已按 GitHub 发布的 SHA-256 校验）
+          **对应脚本提交:** ${{ github.sha }}
 
           **包含的附件:**
-          - `cf-helper-amd64.tar.gz`: Linux x86_64 (Intel/AMD)
-          - `cf-helper-arm64.tar.gz`: Linux 64 位 ARM
-          - `cf-helper-arm.tar.gz`: Linux 32 位 ARM
-          - `cf-helper-darwin-amd64.tar.gz`: macOS Intel
-          - `cf-helper-darwin-arm64.tar.gz`: macOS Apple Silicon
+          - \`cf-helper-amd64.tar.gz\`: Linux x86_64 (Intel/AMD)
+          - \`cf-helper-arm64.tar.gz\`: Linux 64 位 ARM
+          - \`cf-helper-arm.tar.gz\`: Linux 32 位 ARM
+          - \`cf-helper-darwin-amd64.tar.gz\`: macOS Intel
+          - \`cf-helper-darwin-arm64.tar.gz\`: macOS Apple Silicon
           EOF
