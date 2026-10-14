@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-#  cf-helper.sh - Cloudflared 连接助手 (v3.5)
+#  cf-helper.sh - Cloudflared 连接助手 (v3.6)
 #  - 支持 Linux 和 macOS 的 cloudflared 官方发行包
-#  - 二进制文件始终相对于脚本目录查找/下载
+#  - 二进制文件始终相对于脚本(真实)目录查找/下载，支持通过符号链接调用
+#  - 找不到按架构命名的文件时，复用脚本目录中的 cloudflared 或 PATH 里已安装的版本
 #  - 增加了对端口号的有效性验证 (1-65535)
 #  - 增加了对周知端口 (< 1024) 的警告
 # ==============================================================================
@@ -50,8 +51,22 @@ if (( $# > 2 )); then
     exit 2
 fi
 
-# 1. 确定脚本目录。不要依赖调用脚本时的当前工作目录
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P) || {
+# 1. 确定脚本目录。不要依赖调用脚本时的当前工作目录。
+#    若脚本是通过符号链接调用的（例如 ln -s 到 ~/.local/bin 以便全局使用），
+#    必须沿着链接找到真实文件，否则会跑到链接所在的目录里去找/下载 cloudflared。
+#    这里不用 readlink -f：macOS 12.3 之前的 BSD readlink 不支持 -f。
+resolve_script_dir() {
+    local source="${BASH_SOURCE[0]}"
+    local dir
+    while [[ -L "$source" ]]; do
+        dir=$(cd "$(dirname "$source")" >/dev/null 2>&1 && pwd -P) || return 1
+        source=$(readlink "$source") || return 1
+        # 相对路径的链接目标是相对于链接自身所在目录的
+        [[ "$source" == /* ]] || source="$dir/$source"
+    done
+    cd "$(dirname "$source")" >/dev/null 2>&1 && pwd -P
+}
+SCRIPT_DIR=$(resolve_script_dir) || {
     echo "错误：无法确定脚本所在目录。" >&2
     exit 1
 }
@@ -64,10 +79,23 @@ CLOUDFLARED_ASSET=""
 DOWNLOAD_KIND="binary"
 KNOWN_PLATFORM=false
 
+# Apple Silicon 上若终端/shell 运行在 Rosetta 2 之下，uname -m 会报告 x86_64。
+# 此时应改用原生 arm64 版本：arm64 可执行文件可以从 x86_64 进程中直接启动，
+# 没必要让 cloudflared 也跟着走转译。
+if [[ "$OS" == "Darwin" && "$ARCH" == "x86_64" ]] && \
+    [[ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" == "1" ]]; then
+    ARCH="arm64"
+fi
+
 case "${OS}:${ARCH}" in
     Linux:x86_64|Linux:amd64)
         CLOUDFLARED_BINARY="$SCRIPT_DIR/cloudflared-linux-amd64"
         CLOUDFLARED_ASSET="cloudflared-linux-amd64"
+        KNOWN_PLATFORM=true
+        ;;
+    Linux:i386|Linux:i486|Linux:i586|Linux:i686)
+        CLOUDFLARED_BINARY="$SCRIPT_DIR/cloudflared-linux-386"
+        CLOUDFLARED_ASSET="cloudflared-linux-386"
         KNOWN_PLATFORM=true
         ;;
     Linux:aarch64|Linux:arm64)
@@ -75,7 +103,9 @@ case "${OS}:${ARCH}" in
         CLOUDFLARED_ASSET="cloudflared-linux-arm64"
         KNOWN_PLATFORM=true
         ;;
-    Linux:arm|Linux:armv7l|Linux:armhf)
+    # 官方 cloudflared-linux-arm 以 GOARM=5（软浮点）编译，是 32 位 ARM 的"通用"版本：
+    # 既能跑在 armv6（树莓派 1 / Zero），也能跑在 armv7 以及 32 位用户态的 armv8 系统上。
+    Linux:arm|Linux:armv6l|Linux:armv7l|Linux:armv8l|Linux:armhf)
         CLOUDFLARED_BINARY="$SCRIPT_DIR/cloudflared-linux-arm"
         CLOUDFLARED_ASSET="cloudflared-linux-arm"
         KNOWN_PLATFORM=true
@@ -109,7 +139,8 @@ cleanup_temp() {
     fi
 }
 trap cleanup_temp EXIT
-trap 'exit 130' INT
+# Ctrl-C 时终端只会回显 ^C 而不换行，下一个 shell 提示符会紧跟在 ^C 后面；补一个换行。
+trap 'echo >&2; exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
 
@@ -125,7 +156,12 @@ download_file() {
     local tmp_file="$DOWNLOAD_TMP"
 
     if command -v curl >/dev/null 2>&1; then
+        # --connect-timeout 只约束建连阶段；传输中途网络"假死"时 curl 会一直挂着。
+        # --speed-limit/--speed-time：连续 30 秒低于 1 KiB/s 就视为失败并交给 --retry 重试。
+        # --proto/--proto-redir：即使 GitHub 的跳转被篡改，也不允许降级到明文 http。
         if ! curl --fail --location --show-error --retry 3 --connect-timeout 15 \
+            --speed-limit 1024 --speed-time 30 \
+            --proto '=https' --proto-redir '=https' \
             --output "$tmp_file" "$url"; then
             rm -f "$tmp_file"
             DOWNLOAD_TMP=""
@@ -160,6 +196,29 @@ download_file() {
     DOWNLOAD_TMP=""
 }
 
+# 在已知平台上，按架构命名的文件不存在时，先看看用户是否已经用别的方式准备好了
+# cloudflared，再决定要不要提议下载 40 MB 的文件：
+#   - macOS 官方 .tgz 解压出来的文件名就叫 cloudflared，手动下载的 Mac 用户很容易踩到；
+#   - 也可能早就通过 brew / apt 安装到了 PATH 里。
+find_existing_cloudflared() {
+    local candidate
+    if [[ -f "$SCRIPT_DIR/cloudflared" ]]; then
+        printf '%s\n' "$SCRIPT_DIR/cloudflared"
+        return 0
+    fi
+    if candidate=$(command -v cloudflared 2>/dev/null) && [[ -n "$candidate" && -x "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+    return 1
+}
+
+if [[ "$KNOWN_PLATFORM" == true && ! -f "$CLOUDFLARED_BINARY" ]] && \
+    EXISTING_BINARY=$(find_existing_cloudflared); then
+    echo "提示：未找到 $(basename "$CLOUDFLARED_BINARY")，改用已存在的 cloudflared：$EXISTING_BINARY"
+    CLOUDFLARED_BINARY="$EXISTING_BINARY"
+fi
+
 # 3. 根据架构类型处理二进制文件
 if [[ "$KNOWN_PLATFORM" == true ]]; then
     if [[ ! -f "$CLOUDFLARED_BINARY" ]]; then
@@ -171,7 +230,8 @@ if [[ "$KNOWN_PLATFORM" == true ]]; then
             echo
         fi
 
-        if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
+        # 接受 y / Y / yes / Yes / YES；很多人习惯性地会敲完整的 yes。
+        if [[ "$choice" =~ ^[Yy]([Ee][Ss])?$ ]]; then
             DOWNLOAD_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/$CLOUDFLARED_ASSET"
             echo "正在从 $DOWNLOAD_URL 下载..."
 
@@ -257,9 +317,11 @@ echo ""
 
 # 5. 获取并验证连接参数
 # -- 获取 Hostname --
-HOSTNAME="${1:-}"
-if [[ -n "$HOSTNAME" ]]; then
-    echo "已从命令行参数获取隧道地址: $HOSTNAME"
+# 不用 HOSTNAME 作变量名：它是 bash 自动设置的内建变量（本机主机名），在 Docker 等
+# 环境里还是导出的环境变量，覆盖它既容易让读代码的人误解，也会把值泄露给子进程。
+TUNNEL_HOSTNAME="${1:-}"
+if [[ -n "$TUNNEL_HOSTNAME" ]]; then
+    echo "已从命令行参数获取隧道地址: $TUNNEL_HOSTNAME"
 fi
 
 # 去掉首尾空白并挡掉明显不可能成为主机名的输入。cloudflared 会把该值拼成
@@ -267,6 +329,7 @@ fi
 # 并吐出一大段帮助文本，而复制粘贴时顺手带上空格/换行是非常常见的。
 normalize_hostname() {
     local value="$1"
+    local stripped
 
     value="${value#"${value%%[![:space:]]*}"}"
     value="${value%"${value##*[![:space:]]}"}"
@@ -274,6 +337,23 @@ normalize_hostname() {
     if [[ -z "$value" ]]; then
         return 1
     fi
+
+    # 直接从浏览器地址栏粘贴 "https://ssh.example.com/" 是最常见的"错误"输入。
+    # cloudflared 自己其实也接受带 scheme 的写法，没必要把用户打回去重输：
+    # 自动剥掉 scheme 和路径/查询/片段，只保留主机名，并明确告知。
+    stripped="$value"
+    if [[ "$stripped" =~ ^[A-Za-z][A-Za-z0-9+.-]*:// ]]; then
+        stripped="${stripped#*://}"
+    fi
+    stripped="${stripped%%[/?#]*}"
+    if [[ -z "$stripped" ]]; then
+        return 1
+    fi
+    if [[ "$stripped" != "$value" ]]; then
+        echo "提示：已从 '$value' 中提取主机名：$stripped"
+        value="$stripped"
+    fi
+
     # 中间的空白同样会让 cloudflared 解析失败。
     if [[ "$value" == *[[:space:]]* ]]; then
         return 1
@@ -282,28 +362,28 @@ normalize_hostname() {
     if [[ "$value" == -* ]]; then
         return 1
     fi
-    # '/' '?' '#' '@' 会让该值被解析成路径/查询/片段/用户信息，而不是主机名。
-    if [[ "$value" == *[/\?#@]* ]]; then
+    # '@' 会让该值被解析成用户信息而不是主机名（'/' '?' '#' 已在上面剥掉）。
+    if [[ "$value" == *@* ]]; then
         return 1
     fi
 
-    HOSTNAME="$value"
+    TUNNEL_HOSTNAME="$value"
 }
 
 # 循环直到获得一个可用的隧道地址，行为与下面的端口号处理保持一致。
 hostname_eof=false
 while true; do
-    if [[ -z "$HOSTNAME" ]]; then
-        if ! IFS= read -r -p "请输入隧道地址 (hostname): " HOSTNAME; then
+    if [[ -z "$TUNNEL_HOSTNAME" ]]; then
+        if ! IFS= read -r -p "请输入隧道地址 (hostname): " TUNNEL_HOSTNAME; then
             # 输入流提前结束（如管道输入末尾无换行符）时保留已读取到的内容。
             hostname_eof=true
             echo
         fi
     fi
 
-    raw_hostname="$HOSTNAME"
-    if ! normalize_hostname "$HOSTNAME"; then
-        if [[ -z "${HOSTNAME//[[:space:]]/}" ]]; then
+    raw_hostname="$TUNNEL_HOSTNAME"
+    if ! normalize_hostname "$TUNNEL_HOSTNAME"; then
+        if [[ -z "${TUNNEL_HOSTNAME//[[:space:]]/}" ]]; then
             echo "错误：隧道地址不能为空。" >&2
         else
             echo "错误：隧道地址 '$raw_hostname' 含有空格或非法字符，请重新输入。" >&2
@@ -312,7 +392,7 @@ while true; do
         if [[ "$hostname_eof" == true ]]; then
             exit 1
         fi
-        HOSTNAME=""
+        TUNNEL_HOSTNAME=""
         continue
     fi
     break
@@ -328,12 +408,15 @@ normalize_port() {
     local value="$1"
     local number
 
-    [[ "$value" =~ ^[0-9]+$ ]] || return 1
-    [[ "$value" =~ ^0*([0-9]+)$ ]]
-    value="${BASH_REMATCH[1]}"
-    (( ${#value} <= 5 )) || return 1
+    # 与主机名一样容忍首尾空白（" 2222 " 这种粘贴结果没必要打回去）。
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
 
-    number=$((10#$value))
+    # 一条正则同时完成：只允许十进制数字、剥掉前导零、去零后最多 5 位
+    # （顺带挡掉会让 $(( )) 溢出的超长数字）。原先第二条 [[ =~ ]] 不带 || return，
+    # 一旦在 if 之外调用本函数就会被 set -e 直接终止脚本。
+    [[ "$value" =~ ^0*([0-9]{1,5})$ ]] || return 1
+    number=$((10#${BASH_REMATCH[1]}))
     (( number >= 1 && number <= 65535 )) || return 1
     PORT="$number"
 }
@@ -374,4 +457,4 @@ done
 echo ""
 echo "［已使用 '$CLOUDFLARED_BINARY' 执行连接命令，以下是程序的输出］"
 echo "----------------------------------------------------"
-exec "$CLOUDFLARED_BINARY" access tcp --listener "127.0.0.1:$PORT" --hostname "$HOSTNAME"
+exec "$CLOUDFLARED_BINARY" access tcp --listener "127.0.0.1:$PORT" --hostname "$TUNNEL_HOSTNAME"
