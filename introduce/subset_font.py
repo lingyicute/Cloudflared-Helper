@@ -63,9 +63,13 @@ def collect_chars(html):
     # Terminal demo, snackbar and architecture note are injected from JS strings.
     for script in re.findall(r"<script\b[^>]*>(.*?)</script>", html, flags=re.S | re.I):
         code = re.sub(r"/\*.*?\*/", "", script, flags=re.S)
-        code = re.sub(r"//.*?$", "", code, flags=re.M)
-        for match in re.finditer(r"(['\"`])((?:\\.|(?!\1).)*)\1", code):
-            chars.update(match.group(2))
+        # Only treat "//" as a comment when it is not inside a string literal: otherwise a
+        # URL such as 'https://github.com/...' truncates the line and silently drops any CJK
+        # text after it. Strings and line comments are consumed left-to-right in one pass.
+        token = re.compile(r"(['\"`])((?:\\.|(?!\1).)*)\1|//[^\n]*", flags=re.S)
+        for match in token.finditer(code):
+            if match.group(1):
+                chars.update(match.group(2))
     chars.update(chr(c) for c in range(32, 127))  # Includes years / English UI.
     chars.update(PUNCT)
     return chars
@@ -119,8 +123,6 @@ def ensure_preload(html):
 
 
 def main():
-    from fontTools.ttLib import TTFont
-
     html = HTML_PATH.read_text(encoding="utf-8")
     chars = collect_chars(html)
     local_font = os.environ.get("NEBULOVE_FONT")
@@ -140,6 +142,10 @@ def main():
         ):
             print("Visible charset unchanged; WOFF2 subset is current.")
             return
+
+    # Import lazily: a cache hit above must not require fonttools, so anyone can run this
+    # as a cheap "is the committed subset still current?" check without installing deps.
+    from fontTools.ttLib import TTFont
 
     if local_font:
         nebulove = TTFont(local_font)
