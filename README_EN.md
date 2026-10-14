@@ -10,9 +10,10 @@ This is a powerful Bash script designed to simplify and automate the process of 
 
 This script is more than just a simple command alias; it is a smart, user-friendly assistant tool.
 
-* **Smart Platform and Architecture Detection**: Automatically identifies Linux or macOS and the current system architecture (`x86_64`, `aarch64`, `arm`), then matches the correct `cloudflared` binary file.
+* **Smart Platform and Architecture Detection**: Automatically identifies Linux or macOS and the current system architecture (`x86_64`, `i686`, `aarch64`, `armv6`/`armv7`), then matches the correct `cloudflared` binary file. On Apple Silicon the native arm64 build is chosen even when the terminal runs under Rosetta.
 * **Automated Binary Management**:
-    * **Auto-Download**: If the required `cloudflared` binary is missing, it will prompt and ask if you'd like to download the latest version from the official GitHub repository.
+    * **Reuse What You Have**: The architecture-specific file next to the script is preferred; if it is missing, a file simply named `cloudflared` in the script directory (the default name after extracting the official macOS archive) and then a `cloudflared` already installed on your `PATH` (e.g. via Homebrew / apt) are tried.
+    * **Auto-Download**: If none of the above exists, it will prompt and ask if you'd like to download the latest version from the official GitHub repository.
     * **Auto-Permissioning**: Automatically grants execution permissions (`chmod +x`) to the `cloudflared` file, resolving common "permission denied" issues.
 * **Flexible Operation Modes**:
     * **Interactive Mode**: Run the script directly, and it will guide you through a clear Q&A to input the required hostname and port. Perfect for beginners or infrequent connections.
@@ -51,6 +52,8 @@ You can also visit the [**Releases Page**](https://github.com/lingyicute/Cloudfl
 
 Download and extract the release package for your platform and architecture. It contains `cf-helper.sh` and the matching `cloudflared` binary in the same directory in new releases. You may also download only `cf-helper.sh` and place a matching `cloudflared` binary beside it.
 
+The script always looks for `cloudflared` relative to its **real** location, so you can safely `ln -s` it into a `PATH` directory such as `~/.local/bin`.
+
 #### 2. Grant Execution Permissions
 
 Open your terminal, navigate to the directory containing the script, and run the following command:
@@ -82,6 +85,9 @@ Now you can use it in the following ways:
     
     # Example:
     ./cf-helper.sh your-tunnel.example.com 21128
+
+    # Pasting a full URL works too; the hostname is extracted automatically:
+    ./cf-helper.sh https://your-tunnel.example.com/ 21128
     ```
 
 * **Method 3: Get Help**
