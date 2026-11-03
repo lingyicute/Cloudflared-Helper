@@ -1142,8 +1142,9 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
       }
     } catch {}
     if (!arch) {
-      if (/aarch64|arm64|armv8/i.test(platformText)) arch = 'arm64';
-      else if (/armv7|armv6/i.test(platformText)) arch = 'arm';
+      // armv8l 是 64 位内核上的 32 位用户态，cf-helper.sh 也把它归为 arm，这里保持一致。
+      if (/aarch64|arm64|armv8(?!l)/i.test(platformText)) arch = 'arm64';
+      else if (/armv[5-8]/i.test(platformText)) arch = 'arm';
       else if (/x86_64|x64|Win64|WOW64|amd64/i.test(platformText)) arch = 'amd64';
       // macOS 浏览器常把 Apple Silicon 伪装成 MacIntel；无法确定时不要推荐错误的 Linux 包。
       else if (platform === 'darwin' && navigator.maxTouchPoints > 1) arch = 'arm64';
