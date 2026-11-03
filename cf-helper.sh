@@ -236,8 +236,11 @@ if [[ "$KNOWN_PLATFORM" == true ]]; then
             echo "正在从 $DOWNLOAD_URL 下载..."
 
             if [[ "$DOWNLOAD_KIND" == "darwin-archive" ]]; then
-                EXTRACT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/cf-helper-download.XXXXXX") || {
-                    echo "错误：无法创建临时解压目录。" >&2
+                # 解压目录必须与最终目标在同一文件系统上：若放在 $TMPDIR（macOS 上通常是另一个卷），
+                # 最后的 mv 会退化为"复制+删除"，中途被中断就会在目标路径留下一个残缺但非空的
+                # 可执行文件，下次运行时会被当作有效的 cloudflared。同卷 mv 是原子的。
+                EXTRACT_DIR=$(mktemp -d "$SCRIPT_DIR/.cloudflared-download.XXXXXX") || {
+                    echo "错误：无法在脚本目录创建临时解压目录：$SCRIPT_DIR" >&2
                     exit 1
                 }
                 ARCHIVE_PATH="$EXTRACT_DIR/cloudflared.tgz"
