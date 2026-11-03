@@ -9,6 +9,10 @@ on:
       - "introduce/subset_font.py"
   workflow_dispatch:
 
+concurrency:
+  group: font-subset
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
