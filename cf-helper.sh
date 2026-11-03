@@ -105,7 +105,8 @@ case "${OS}:${ARCH}" in
         ;;
     # 官方 cloudflared-linux-arm 以 GOARM=5（软浮点）编译，是 32 位 ARM 的"通用"版本：
     # 既能跑在 armv6（树莓派 1 / Zero），也能跑在 armv7 以及 32 位用户态的 armv8 系统上。
-    Linux:arm|Linux:armv6l|Linux:armv7l|Linux:armv8l|Linux:armhf)
+    # armv5tel / armv5tejl 常见于老款 NAS 和路由器，同样适用这个 GOARM=5 的版本。
+    Linux:arm|Linux:armv5tel|Linux:armv5tejl|Linux:armv5l|Linux:armv6l|Linux:armv7l|Linux:armv8l|Linux:armhf)
         CLOUDFLARED_BINARY="$SCRIPT_DIR/cloudflared-linux-arm"
         CLOUDFLARED_ASSET="cloudflared-linux-arm"
         KNOWN_PLATFORM=true
