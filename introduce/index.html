@@ -1014,7 +1014,10 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     showSnack(`主题色已切换为「${s.title}」`);
   }));
   document.addEventListener('click', (e) => {
-    if (!paletteMenu.contains(e.target)) setPaletteOpen(false);
+    if (!paletteMenu.contains(e.target) && !paletteBtn.contains(e.target)) setPaletteOpen(false);
+  });
+  document.addEventListener('focusin', (e) => {
+    if (!paletteMenu.contains(e.target) && !paletteBtn.contains(e.target)) setPaletteOpen(false);
   });
 
   /* ---------- 涟漪 ---------- */
@@ -1033,28 +1036,45 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   /* ---------- 顶栏滚动状态 / FAB / 导航高亮 ---------- */
   const appBar = $('#appBar'), fab = $('#fab');
   const navLinks = $$('.nav a');
+  const allNavLinks = $$('.nav a, #sheet a');
   const sections = navLinks.map(a => $(a.getAttribute('href'))).filter(Boolean);
   const onScroll = () => {
     const y = scrollY;
+    const showFab = y > 600;
     appBar.classList.toggle('scrolled', y > 8);
-    fab.classList.toggle('show', y > 600);
+    fab.classList.toggle('show', showFab);
+    if (!showFab && document.activeElement === fab) fab.blur();
     let current = null;
     for (const s of sections) if (s.getBoundingClientRect().top <= 120) current = s.id;
-    navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
+    if (y > 0 && innerHeight + y >= root.scrollHeight - 4 && sections.length) {
+      current = sections[sections.length - 1].id;
+    }
+    allNavLinks.forEach(a => {
+      const active = a.getAttribute('href') === '#' + current;
+      a.classList.toggle('active', active);
+      if (active) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    });
   };
-  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll, { passive: true });
+  onScroll();
   fab.addEventListener('click', () => scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' }));
 
   /* ---------- 移动端底部菜单 ---------- */
   const sheet = $('#sheet'), scrim = $('#sheetScrim'), menuBtn = $('#menuBtn');
+  const mobileQuery = matchMedia('(max-width: 820px)');
   const toggleSheet = (open) => {
     sheet.classList.toggle('open', open);
     scrim.classList.toggle('open', open);
     menuBtn.setAttribute('aria-expanded', String(open));
   };
-  menuBtn.addEventListener('click', () => toggleSheet(true));
+  menuBtn.addEventListener('click', () => { setPaletteOpen(false); toggleSheet(true); });
   scrim.addEventListener('click', () => toggleSheet(false));
   $$('a', sheet).forEach(a => a.addEventListener('click', () => toggleSheet(false)));
+  const onMobileChange = e => { if (!e.matches && sheet.classList.contains('open')) toggleSheet(false); };
+  if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', onMobileChange);
+  else if (mobileQuery.addListener) mobileQuery.addListener(onMobileChange);
   // Esc 关闭浮层，并把焦点交还给打开它的按钮（WAI-ARIA 对话框/菜单的基本约定）。
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
