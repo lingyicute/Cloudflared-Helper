@@ -86,9 +86,13 @@ resolve_script_dir() {
     local source="${BASH_SOURCE[0]}"
     local dir
     local CDPATH=""
+    local max_links=40
     while [[ -L "$source" ]]; do
+        if (( max_links-- <= 0 )); then
+            return 1
+        fi
         dir=$(cd -P -- "$(dirname -- "$source")" >/dev/null 2>&1 && pwd -P) || return 1
-        source=$(readlink "$source") || return 1
+        source=$(readlink -- "$source") || return 1
         # 相对路径的链接目标是相对于链接自身所在目录的
         [[ "$source" == /* ]] || source="$dir/$source"
     done
