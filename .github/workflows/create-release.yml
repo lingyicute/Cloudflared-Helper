@@ -117,7 +117,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # 不指定 --target 时 tag 会打在默认分支的最新提交上；若构建期间又有新提交推送，
+          # 发行说明里写的"对应脚本提交"就会与 tag 实际指向的提交不一致。
           gh release create "nightly-${{ github.run_number }}" release_assets/*.tar.gz \
+            --target "${{ github.sha }}" \
             --title "Nightly No.${{ github.run_number }} (cloudflared ${CLOUDFLARED_TAG})" \
             --notes-file - << EOF
           自动构建的发行版 No.${{ github.run_number }}
