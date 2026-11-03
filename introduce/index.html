@@ -542,16 +542,16 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     </nav>
     <div class="app-bar-actions">
       <div class="palette-picker">
-        <button class="icon-btn ripple" id="paletteBtn" aria-label="切换主题色" title="主题色" aria-expanded="false">
+        <button class="icon-btn ripple" id="paletteBtn" aria-label="切换主题色" title="主题色" aria-expanded="false" aria-controls="paletteMenu">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.4-.15-.75-.4-1-.25-.27-.4-.62-.4-1 0-.83.67-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.97-4.5-9-10-9z"/></svg>
         </button>
         <div class="palette-menu" id="paletteMenu" role="group" aria-label="选择主题色">
-          <button class="swatch" style="--sw:60" data-h="60" aria-label="橙色" title="橙色"></button>
-          <button class="swatch" style="--sw:260" data-h="260" aria-label="蓝色" title="蓝色"></button>
-          <button class="swatch" style="--sw:150" data-h="150" aria-label="绿色" title="绿色"></button>
-          <button class="swatch" style="--sw:310" data-h="310" aria-label="紫色" title="紫色"></button>
-          <button class="swatch" style="--sw:15" data-h="15" aria-label="玫红" title="玫红"></button>
-          <button class="swatch" style="--sw:200" data-h="200" aria-label="青色" title="青色"></button>
+          <button class="swatch" style="--sw:60" data-h="60" aria-label="橙色" title="橙色" aria-pressed="true"></button>
+          <button class="swatch" style="--sw:260" data-h="260" aria-label="蓝色" title="蓝色" aria-pressed="false"></button>
+          <button class="swatch" style="--sw:150" data-h="150" aria-label="绿色" title="绿色" aria-pressed="false"></button>
+          <button class="swatch" style="--sw:310" data-h="310" aria-label="紫色" title="紫色" aria-pressed="false"></button>
+          <button class="swatch" style="--sw:15" data-h="15" aria-label="玫红" title="玫红" aria-pressed="false"></button>
+          <button class="swatch" style="--sw:200" data-h="200" aria-label="青色" title="青色" aria-pressed="false"></button>
         </div>
       </div>
       <button class="switch" id="themeSwitch" role="switch" aria-checked="false" aria-label="切换深色模式" title="深色模式">
@@ -910,7 +910,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 
 <footer>
   <div class="container">
-    <span>© <span id="year"></span> lingyicute · Cloudflared Helper · AGPL-3.0</span>
+    <span>© <span id="year">2026</span> lingyicute · Cloudflared Helper · AGPL-3.0</span>
     <span class="label-md" style="opacity:.6">This page proudly features Material You design. ❤️</span>
     <nav class="links" aria-label="页脚链接">
       <a href="https://github.com/lingyicute/Cloudflared-Helper" target="_blank" rel="noopener">GitHub</a>
@@ -988,7 +988,11 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   const paletteBtn = $('#paletteBtn'), paletteMenu = $('#paletteMenu');
   const applyHue = (h) => {
     root.style.setProperty('--h', h);
-    $$('.swatch').forEach(s => s.classList.toggle('active', s.dataset.h === String(h)));
+    $$('.swatch').forEach(s => {
+      const active = s.dataset.h === String(h);
+      s.classList.toggle('active', active);
+      s.setAttribute('aria-pressed', String(active));
+    });
   };
   // localStorage 里的值可能被手改或来自旧版本；非法的 --h 会让所有 oklch() 颜色失效、整页变成无样式的黑白。
   const parseHue = (v) => { const n = Number.parseFloat(v); return Number.isFinite(n) ? ((n % 360) + 360) % 360 : null; };
