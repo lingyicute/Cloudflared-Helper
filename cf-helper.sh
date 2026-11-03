@@ -214,18 +214,18 @@ download_file() {
 #   - 也可能早就通过 brew / apt 安装到了 PATH 里。
 find_existing_cloudflared() {
     local candidate
-    if [[ -f "$SCRIPT_DIR/cloudflared" ]]; then
+    if [[ -f "$SCRIPT_DIR/cloudflared" && -s "$SCRIPT_DIR/cloudflared" ]]; then
         printf '%s\n' "$SCRIPT_DIR/cloudflared"
         return 0
     fi
-    if candidate=$(command -v cloudflared 2>/dev/null) && [[ -n "$candidate" && -x "$candidate" ]]; then
+    if candidate=$(type -P cloudflared 2>/dev/null) && [[ -n "$candidate" && -f "$candidate" && -s "$candidate" && -x "$candidate" ]]; then
         printf '%s\n' "$candidate"
         return 0
     fi
     return 1
 }
 
-if [[ "$KNOWN_PLATFORM" == true && ! -f "$CLOUDFLARED_BINARY" ]] && \
+if [[ "$KNOWN_PLATFORM" == true && ( ! -f "$CLOUDFLARED_BINARY" || ! -s "$CLOUDFLARED_BINARY" ) ]] && \
     EXISTING_BINARY=$(find_existing_cloudflared); then
     echo "提示：未找到 $(basename "$CLOUDFLARED_BINARY")，改用已存在的 cloudflared：$EXISTING_BINARY"
     CLOUDFLARED_BINARY="$EXISTING_BINARY"
@@ -233,7 +233,7 @@ fi
 
 # 3. 根据架构类型处理二进制文件
 if [[ "$KNOWN_PLATFORM" == true ]]; then
-    if [[ ! -f "$CLOUDFLARED_BINARY" ]]; then
+    if [[ ! -f "$CLOUDFLARED_BINARY" || ! -s "$CLOUDFLARED_BINARY" ]]; then
         echo "提示：为 '$OS/$ARCH' 设计的二进制文件不存在：$(basename "$CLOUDFLARED_BINARY")"
         if ! IFS= read -r -p "是否要自动从 GitHub 下载最新版本？ (y/n): " choice; then
             # read 在输入末尾缺少换行符（如通过管道传入）时也会返回非零，
@@ -292,7 +292,13 @@ else
 
     CANDIDATES=()
     for candidate in "$SCRIPT_DIR"/cloudflared*; do
-        [[ -f "$candidate" ]] && CANDIDATES+=("$candidate")
+        [[ -f "$candidate" && -s "$candidate" ]] || continue
+        case "$candidate" in
+            *.tgz|*.tar.*|*.zip|*.deb|*.rpm|*.pkg|*.msi|*.sha256*|*.sig|*.asc|*.tmp.*)
+                continue
+                ;;
+        esac
+        CANDIDATES+=("$candidate")
     done
 
     if [[ "${#CANDIDATES[@]}" -eq 1 ]]; then
@@ -315,7 +321,7 @@ else
 fi
 
 # 4. 最终检查并确保文件可执行。
-if [[ -z "$CLOUDFLARED_BINARY" || ! -s "$CLOUDFLARED_BINARY" ]]; then
+if [[ -z "$CLOUDFLARED_BINARY" || ! -f "$CLOUDFLARED_BINARY" || ! -s "$CLOUDFLARED_BINARY" ]]; then
     echo "严重错误：未能定位到可用的 cloudflared 二进制文件。" >&2
     exit 1
 fi
