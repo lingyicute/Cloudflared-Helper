@@ -137,8 +137,8 @@ case "${OS}:${ARCH}" in
         ;;
     # 官方 cloudflared-linux-arm 以 GOARM=5（软浮点）编译，是 32 位 ARM 的"通用"版本：
     # 既能跑在 armv6（树莓派 1 / Zero），也能跑在 armv7 以及 32 位用户态的 armv8 系统上。
-    # armv5tel / armv5tejl 常见于老款 NAS 和路由器，同样适用这个 GOARM=5 的版本。
-    Linux:arm|Linux:armv5tel|Linux:armv5tejl|Linux:armv5l|Linux:armv6l|Linux:armv7l|Linux:armv8l|Linux:armhf)
+    # armv5te / armv5tel / armv5tejl 常见于老款 NAS 和路由器，同样适用这个 GOARM=5 的版本。
+    Linux:arm|Linux:armv5te|Linux:armv5tel|Linux:armv5tejl|Linux:armv5l|Linux:armv6l|Linux:armv7l|Linux:armv8l|Linux:armhf)
         CLOUDFLARED_BINARY="$SCRIPT_DIR/cloudflared-linux-arm"
         CLOUDFLARED_ASSET="cloudflared-linux-arm"
         KNOWN_PLATFORM=true
@@ -156,6 +156,13 @@ case "${OS}:${ARCH}" in
         KNOWN_PLATFORM=true
         ;;
 esac
+
+# 脚本自身恰好被命名成目标文件名时，后面的"文件已存在"检查会把脚本当成 cloudflared，
+# 甚至在重命名后提议下载并覆盖脚本本身，这里直接拒绝。
+if [[ "$KNOWN_PLATFORM" == true && -e "$CLOUDFLARED_BINARY" && "$CLOUDFLARED_BINARY" -ef "${BASH_SOURCE[0]}" ]]; then
+    echo "错误：脚本文件名与目标 cloudflared 文件名相同：$(basename "$CLOUDFLARED_BINARY")，请重命名脚本。" >&2
+    exit 1
+fi
 
 # 下载被中断（Ctrl-C、终端断开）时，mktemp 出来的半成品不会自己消失，
 # 会在脚本目录里留下一堆 cloudflared-*.tmp.XXXXXX。用 trap 兜底清理。
