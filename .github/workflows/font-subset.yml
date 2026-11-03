@@ -45,4 +45,6 @@ jobs:
           git config user.name "$COMMIT_NAME"
           git config user.email "$COMMIT_EMAIL"
           git commit -m "perf: 更新字体子集 [no ci]"
-          git push
+          # 生成期间若有人推送了新提交，直接 push 会被拒绝；先变基再推送。
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
