@@ -14,7 +14,7 @@
 # 否则会抛出一连串 "[[: not found" / "Bad substitution" 之类的误导性错误。
 if [ -z "${BASH_VERSION:-}" ]; then
     if command -v bash >/dev/null 2>&1; then
-        exec bash "$0" "$@"
+        exec bash -- "$0" "$@"
     fi
     echo "错误：本脚本需要 bash 才能运行，请先安装 bash。" >&2
     exit 1
@@ -39,11 +39,21 @@ Cloudflared 连接助手 (cf-helper.sh)
 EOF
 }
 
-# 0. 显示帮助信息
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-    show_help
-    exit 0
-fi
+# 0. 显示帮助信息与校验命令行选项
+for arg in "$@"; do
+    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+        show_help
+        exit 0
+    fi
+done
+
+for arg in "$@"; do
+    if [[ "$arg" == -* ]]; then
+        echo "错误：未知选项 '$arg'。" >&2
+        show_help >&2
+        exit 2
+    fi
+done
 
 if (( $# > 2 )); then
     echo "错误：最多只能提供 HOSTNAME 和 PORT 两个参数。" >&2
