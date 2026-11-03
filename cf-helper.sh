@@ -235,11 +235,11 @@ download_file() {
 #   - 也可能早就通过 brew / apt 安装到了 PATH 里。
 find_existing_cloudflared() {
     local candidate
-    if [[ -f "$SCRIPT_DIR/cloudflared" && -s "$SCRIPT_DIR/cloudflared" ]]; then
+    if [[ -f "$SCRIPT_DIR/cloudflared" && -s "$SCRIPT_DIR/cloudflared" && ! "$SCRIPT_DIR/cloudflared" -ef "${BASH_SOURCE[0]}" ]]; then
         printf '%s\n' "$SCRIPT_DIR/cloudflared"
         return 0
     fi
-    if candidate=$(type -P cloudflared 2>/dev/null) && [[ -n "$candidate" && -f "$candidate" && -s "$candidate" && -x "$candidate" ]]; then
+    if candidate=$(type -P cloudflared 2>/dev/null) && [[ -n "$candidate" && -f "$candidate" && -s "$candidate" && -x "$candidate" && ! "$candidate" -ef "${BASH_SOURCE[0]}" ]]; then
         printf '%s\n' "$candidate"
         return 0
     fi
@@ -262,6 +262,8 @@ if [[ "$KNOWN_PLATFORM" == true ]]; then
             choice="${choice:-n}"
             echo
         fi
+        choice="${choice#"${choice%%[![:space:]]*}"}"
+        choice="${choice%"${choice##*[![:space:]]}"}"
 
         # 接受 y / Y / yes / Yes / YES；很多人习惯性地会敲完整的 yes。
         if [[ "$choice" =~ ^[Yy]([Ee][Ss])?$ ]]; then
@@ -311,9 +313,9 @@ else
 
     CANDIDATES=()
     for candidate in "$SCRIPT_DIR"/cloudflared*; do
-        [[ -f "$candidate" && -s "$candidate" ]] || continue
+        [[ -f "$candidate" && -s "$candidate" && ! "$candidate" -ef "${BASH_SOURCE[0]}" ]] || continue
         case "$candidate" in
-            *.tgz|*.tar.*|*.zip|*.deb|*.rpm|*.pkg|*.msi|*.sha256*|*.sig|*.asc|*.tmp.*)
+            *.sh|*.tgz|*.tar.*|*.zip|*.deb|*.rpm|*.pkg|*.msi|*.sha256*|*.sig|*.asc|*.tmp.*)
                 continue
                 ;;
         esac
