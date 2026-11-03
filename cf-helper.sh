@@ -257,23 +257,21 @@ if [[ "$KNOWN_PLATFORM" == true ]]; then
                 }
                 ARCHIVE_PATH="$EXTRACT_DIR/cloudflared.tgz"
                 if ! download_file "$DOWNLOAD_URL" "$ARCHIVE_PATH"; then
-                    rm -rf "$EXTRACT_DIR"
                     echo "错误：下载失败。请检查网络连接或下载链接。" >&2
                     exit 1
                 fi
                 if ! tar -xzf "$ARCHIVE_PATH" -C "$EXTRACT_DIR" || \
-                    [[ ! -f "$EXTRACT_DIR/cloudflared" ]]; then
-                    rm -rf "$EXTRACT_DIR"
+                    [[ ! -f "$EXTRACT_DIR/cloudflared" || ! -s "$EXTRACT_DIR/cloudflared" ]]; then
                     echo "错误：下载的 macOS cloudflared 压缩包格式无效。" >&2
                     exit 1
                 fi
                 if ! chmod +x "$EXTRACT_DIR/cloudflared" || \
                     ! mv -f "$EXTRACT_DIR/cloudflared" "$CLOUDFLARED_BINARY"; then
-                    rm -rf "$EXTRACT_DIR"
                     echo "错误：无法安装下载的 cloudflared 文件到 '$CLOUDFLARED_BINARY'。" >&2
                     exit 1
                 fi
                 rm -rf "$EXTRACT_DIR"
+                EXTRACT_DIR=""
             else
                 if ! download_file "$DOWNLOAD_URL" "$CLOUDFLARED_BINARY"; then
                     echo "错误：下载失败。请检查网络连接或下载链接。" >&2
