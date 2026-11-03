@@ -292,6 +292,10 @@ else
         printf '  %s\n' "${CANDIDATES[@]}" >&2
         echo "请只保留一个，或修改脚本以指定要使用的文件。" >&2
         exit 1
+    elif EXISTING_BINARY=$(find_existing_cloudflared); then
+        # 与已知平台保持一致：脚本目录里没有，就用 PATH 中已安装的。
+        CLOUDFLARED_BINARY="$EXISTING_BINARY"
+        echo "成功！未在脚本目录找到文件，改用已安装的 cloudflared: $CLOUDFLARED_BINARY"
     else
         echo "错误：未能在脚本目录中找到任何以 'cloudflared' 开头的文件。" >&2
         echo "请从 https://github.com/cloudflare/cloudflared/releases 下载适用于您系统 '$OS/$ARCH' 的版本，并将其放置在脚本所在的目录中。" >&2
