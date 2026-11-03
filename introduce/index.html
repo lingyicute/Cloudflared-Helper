@@ -452,9 +452,11 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 .fab {
   position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 40; height: 56px; padding: 0 1.25rem 0 1rem; border: none; border-radius: var(--r-lg);
   background: var(--primary-container); color: var(--on-primary-container); box-shadow: var(--shadow-3); font: inherit; font-weight: 600; font-size: .95rem;
-  display: inline-flex; align-items: center; gap: .6rem; cursor: pointer; transform: translateY(120px); opacity: 0; transition: transform .45s var(--ease-emph), opacity .3s, box-shadow .25s;
+  display: inline-flex; align-items: center; gap: .6rem; cursor: pointer; transform: translateY(120px); opacity: 0;
+  visibility: hidden; pointer-events: none;
+  transition: transform .45s var(--ease-emph), opacity .3s, box-shadow .25s, visibility 0s linear .45s;
 }
-.fab.show { transform: none; opacity: 1; }
+.fab.show { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: transform .45s var(--ease-emph), opacity .3s, box-shadow .25s; }
 .fab svg { width: 24px; height: 24px; }
 
 /* ---------- Snackbar ---------- */
