@@ -376,6 +376,7 @@ fi
 normalize_hostname() {
     local value="$1"
     local stripped
+    local hostname_re='^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$'
 
     value="${value#"${value%%[![:space:]]*}"}"
     value="${value%"${value##*[![:space:]]}"}"
@@ -386,26 +387,20 @@ normalize_hostname() {
 
     # 直接从浏览器地址栏粘贴 "https://ssh.example.com/" 是最常见的"错误"输入。
     # cloudflared 自己其实也接受带 scheme 的写法，没必要把用户打回去重输：
-    # 自动剥掉 scheme 和路径/查询/片段，只保留主机名，并明确告知。
+    # 自动剥掉 scheme、路径/查询/片段与 FQDN 末尾点号，只保留主机名，并明确告知。
     stripped="$value"
     if [[ "$stripped" =~ ^[A-Za-z][A-Za-z0-9+.-]*:// ]]; then
         stripped="${stripped#*://}"
     fi
     stripped="${stripped%%[/?#]*}"
+    stripped="${stripped%.}"
     if [[ -z "$stripped" ]]; then
         return 1
     fi
 
-    # 中间的空白同样会让 cloudflared 解析失败。
-    if [[ "$stripped" == *[[:space:]]* ]]; then
-        return 1
-    fi
-    # 以 '-' 开头的输入会被下游当成命令行选项。
-    if [[ "$stripped" == -* ]]; then
-        return 1
-    fi
-    # '@' 会让该值被解析成用户信息而不是主机名（'/' '?' '#' 已在上面剥掉）。
-    if [[ "$stripped" == *@* ]]; then
+    # 按 RFC 1123 校验主机名格式：标签仅含字母、数字与连字符，不以连字符起止，
+    # 单标签不超过 63 字符、总长度不超过 253。同时挡掉空格、@、:port、连续点等非法输入。
+    if (( ${#stripped} > 253 )) || [[ ! "$stripped" =~ $hostname_re ]]; then
         return 1
     fi
 
@@ -417,6 +412,7 @@ normalize_hostname() {
 }
 
 # 循环直到获得一个可用的隧道地址，行为与下面的端口号处理保持一致。
+hostname_retry=false
 hostname_eof=false
 while true; do
     if [[ -z "$TUNNEL_HOSTNAME" ]]; then
@@ -424,6 +420,10 @@ while true; do
             # 输入流提前结束（如管道输入末尾无换行符）时保留已读取到的内容。
             hostname_eof=true
             echo
+            if [[ -z "$TUNNEL_HOSTNAME" && "$hostname_retry" == true ]]; then
+                echo "错误：未能读取隧道地址。" >&2
+                exit 1
+            fi
         fi
     fi
 
@@ -439,6 +439,7 @@ while true; do
             exit 1
         fi
         TUNNEL_HOSTNAME=""
+        hostname_retry=true
         continue
     fi
     break
