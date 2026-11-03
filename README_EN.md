@@ -10,7 +10,7 @@ This is a powerful Bash script designed to simplify and automate the process of 
 
 This script is more than just a simple command alias; it is a smart, user-friendly assistant tool.
 
-* **Smart Platform and Architecture Detection**: Automatically identifies Linux or macOS and the current system architecture (`x86_64`, `i686`, `aarch64`, `armv6`/`armv7`), then matches the correct `cloudflared` binary file. On Apple Silicon the native arm64 build is chosen even when the terminal runs under Rosetta.
+* **Smart Platform and Architecture Detection**: Automatically identifies Linux or macOS and the current system architecture (`x86_64`, `i686`, `aarch64`, `armv5`/`armv6`/`armv7`), then matches the correct `cloudflared` binary file. On Apple Silicon the native arm64 build is chosen even when the terminal runs under Rosetta.
 * **Automated Binary Management**:
     * **Reuse What You Have**: The architecture-specific file next to the script is preferred; if it is missing, a file simply named `cloudflared` in the script directory (the default name after extracting the official macOS archive) and then a `cloudflared` already installed on your `PATH` (e.g. via Homebrew / apt) are tried.
     * **Auto-Download**: If none of the above exists, it will prompt and ask if you'd like to download the latest version from the official GitHub repository.
