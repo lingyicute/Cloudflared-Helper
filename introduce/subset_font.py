@@ -56,10 +56,14 @@ def collect_chars(html):
     parser.feed(html)
     chars = parser.chars
     # Avoid subsetting Chinese code comments, SVG paths or base64 blobs as visible text.
+    css_token = re.compile(
+        r"/\*.*?\*/|content\s*:\s*(['\"])((?:\\.|(?!\1).)*)\1|(['\"])(?:\\.|(?!\3).)*\3",
+        flags=re.S | re.I,
+    )
     for style in re.findall(r"<style\b[^>]*>(.*?)</style>", html, flags=re.S | re.I):
-        css = re.sub(r"/\*.*?\*/", "", style, flags=re.S)
-        for content in re.findall(r"content:\s*['\"]([^'\"]*)['\"]", css):
-            chars.update(content)
+        for match in css_token.finditer(style):
+            if match.group(1):
+                chars.update(match.group(2))
     # Terminal demo, snackbar and architecture note are injected from JS strings.
     for script in re.findall(r"<script\b[^>]*>(.*?)</script>", html, flags=re.S | re.I):
         # Only treat "/* ... */" and "//" as comments when they are not inside a string
@@ -115,10 +119,11 @@ def ensure_preload(html):
     )
     if font_preload.search(html):
         return html
-    style = html.find("<style>")
-    if style < 0:
+    # Match <noscript> as well so the preload link is never injected inside <noscript><style>.
+    anchor = re.search(r"<(?:noscript|style)\b", html, flags=re.I)
+    if not anchor:
         raise ValueError("Missing <style> to attach font preload")
-    return html[:style] + PRELOAD + html[style:]
+    return html[: anchor.start()] + PRELOAD + html[anchor.start() :]
 
 
 def main():
@@ -134,11 +139,16 @@ def main():
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     expected_html = ensure_preload(replace_face(html, FAMILY, OUTPUT.name))
     if "--force" not in sys.argv and CACHE_PATH.exists() and OUTPUT.exists():
-        cached = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        try:
+            cached = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            cached = None
         if (
-            cached.get("fingerprint") == fingerprint
+            isinstance(cached, dict)
+            and cached.get("fingerprint") == fingerprint
             and expected_html == html
-            and cached.get("outputs", {}).get(OUTPUT.name) == digest(OUTPUT)
+            and isinstance(cached.get("outputs"), dict)
+            and cached["outputs"].get(OUTPUT.name) == digest(OUTPUT)
         ):
             print("Visible charset unchanged; WOFF2 subset is current.")
             return
