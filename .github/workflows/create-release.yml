@@ -75,6 +75,7 @@ jobs:
             echo "--- Processing architecture: ${arch} ---"
             echo "Downloading ${source_asset} (${CLOUDFLARED_TAG})..."
             curl --fail --location --show-error --retry 3 --connect-timeout 15 \
+              --speed-limit 1024 --speed-time 30 \
               --proto '=https' --proto-redir '=https' \
               "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_TAG}/${source_asset}" \
               --output "$archive_file"
@@ -96,17 +97,18 @@ jobs:
             if [[ "$arch" == darwin-* ]]; then
               extract_dir=$(mktemp -d)
               tar -xzf "$archive_file" -C "$extract_dir"
-              test -f "$extract_dir/cloudflared"
+              test -f "$extract_dir/cloudflared" && test -s "$extract_dir/cloudflared"
               mv "$extract_dir/cloudflared" "$package_dir/$package_binary"
               rm -rf "$extract_dir"
               rm -f "$archive_file"
             else
+              test -f "$archive_file" && test -s "$archive_file"
               mv "$archive_file" "$package_dir/$package_binary"
             fi
 
             chmod +x "$package_dir/cf-helper.sh" "$package_dir/$package_binary"
 
-            tar -C "$package_dir" -czf "release_assets/cf-helper-${package_suffix}.tar.gz" .
+            tar -C "$package_dir" -czf "release_assets/cf-helper-${package_suffix}.tar.gz" cf-helper.sh "$package_binary"
             echo "Package for ${package_suffix} created successfully."
           done
 
