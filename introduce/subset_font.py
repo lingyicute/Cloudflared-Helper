@@ -62,12 +62,11 @@ def collect_chars(html):
             chars.update(content)
     # Terminal demo, snackbar and architecture note are injected from JS strings.
     for script in re.findall(r"<script\b[^>]*>(.*?)</script>", html, flags=re.S | re.I):
-        code = re.sub(r"/\*.*?\*/", "", script, flags=re.S)
-        # Only treat "//" as a comment when it is not inside a string literal: otherwise a
-        # URL such as 'https://github.com/...' truncates the line and silently drops any CJK
-        # text after it. Strings and line comments are consumed left-to-right in one pass.
-        token = re.compile(r"(['\"`])((?:\\.|(?!\1).)*)\1|//[^\n]*", flags=re.S)
-        for match in token.finditer(code):
+        # Only treat "/* ... */" and "//" as comments when they are not inside a string
+        # literal: otherwise a URL or glob in a string truncates code and silently drops
+        # CJK text after it. Strings and comments are consumed left-to-right in one pass.
+        token = re.compile(r"(['\"`])((?:\\.|(?!\1).)*)\1|/\*.*?\*/|//[^\n]*", flags=re.S)
+        for match in token.finditer(script):
             if match.group(1):
                 chars.update(match.group(2))
     chars.update(chr(c) for c in range(32, 127))  # Includes years / English UI.
@@ -133,11 +132,12 @@ def main():
         + json.dumps(sorted(ord(c) for c in chars))
     ).encode()).hexdigest()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    expected_html = ensure_preload(replace_face(html, FAMILY, OUTPUT.name))
     if "--force" not in sys.argv and CACHE_PATH.exists() and OUTPUT.exists():
         cached = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
         if (
             cached.get("fingerprint") == fingerprint
-            and OUTPUT.name in html
+            and expected_html == html
             and cached.get("outputs", {}).get(OUTPUT.name) == digest(OUTPUT)
         ):
             print("Visible charset unchanged; WOFF2 subset is current.")
