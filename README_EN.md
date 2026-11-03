@@ -88,6 +88,8 @@ Now you can use it in the following ways:
 
     # Pasting a full URL works too; the hostname is extracted automatically:
     ./cf-helper.sh https://your-tunnel.example.com/ 21128
+
+    # Note: the tunnel address must be a domain name; cloudflared does not support IP addresses (e.g. 1.2.3.4)
     ```
 
 * **Method 3: Get Help**

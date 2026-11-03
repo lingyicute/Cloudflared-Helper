@@ -88,6 +88,8 @@ chmod +x cf-helper.sh
 
     # 直接粘贴 URL 也可以，脚本会自动提取其中的主机名:
     ./cf-helper.sh https://your-tunnel.example.com/ 21128
+
+    # 注意: 隧道地址必须是域名，cloudflared 不支持 IP 地址（如 1.2.3.4）
     ```
 
 * **方式三：获取帮助**
