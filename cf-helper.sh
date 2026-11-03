@@ -448,11 +448,13 @@ normalize_port() {
 # port_allow_default：只有"从未提供过端口"时，输入流结束才回落到默认端口。
 # 用户明确给过端口却无效时，不应该悄悄换成另一个端口连上去。
 port_allow_default=true
+port_eof=false
 while true; do
     if [[ -z "$PORT" ]]; then
         if ! IFS= read -r -p "请输入本地监听端口 [$DEFAULT_PORT]: " PORT; then
             # 输入流提前结束（管道末尾缺少换行符，或用户直接按下 Ctrl-D）：
             # 已读取到的内容照常校验；什么都没读到就按提示采用默认端口。
+            port_eof=true
             echo
             if [[ -z "$PORT" && "$port_allow_default" != true ]]; then
                 echo "错误：未能读取端口号。" >&2
@@ -465,6 +467,9 @@ while true; do
     raw_port="$PORT"
     if ! normalize_port "$PORT"; then
         echo "错误：端口号 '$raw_port' 必须是 1 到 65535 之间的十进制数字。" >&2
+        if [[ "$port_eof" == true ]]; then
+            exit 1
+        fi
         PORT=""
         port_allow_default=false
         continue
