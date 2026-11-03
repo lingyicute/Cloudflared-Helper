@@ -41,19 +41,36 @@ EOF
 
 # 0. 显示帮助信息与校验命令行选项
 for arg in "$@"; do
+    if [[ "$arg" == "--" ]]; then
+        break
+    fi
     if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
         show_help
         exit 0
     fi
 done
 
+POSITIONAL_ARGS=()
+parsing_options=true
 for arg in "$@"; do
-    if [[ "$arg" == -* ]]; then
-        echo "错误：未知选项 '$arg'。" >&2
-        show_help >&2
-        exit 2
+    if [[ "$parsing_options" == true ]]; then
+        if [[ "$arg" == "--" ]]; then
+            parsing_options=false
+            continue
+        fi
+        if [[ "$arg" == -* ]]; then
+            echo "错误：未知选项 '$arg'。" >&2
+            show_help >&2
+            exit 2
+        fi
     fi
+    POSITIONAL_ARGS+=("$arg")
 done
+if (( ${#POSITIONAL_ARGS[@]} > 0 )); then
+    set -- "${POSITIONAL_ARGS[@]}"
+else
+    set --
+fi
 
 if (( $# > 2 )); then
     echo "错误：最多只能提供 HOSTNAME 和 PORT 两个参数。" >&2
