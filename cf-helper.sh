@@ -68,13 +68,14 @@ fi
 resolve_script_dir() {
     local source="${BASH_SOURCE[0]}"
     local dir
+    local CDPATH=""
     while [[ -L "$source" ]]; do
-        dir=$(cd "$(dirname "$source")" >/dev/null 2>&1 && pwd -P) || return 1
+        dir=$(cd -P -- "$(dirname -- "$source")" >/dev/null 2>&1 && pwd -P) || return 1
         source=$(readlink "$source") || return 1
         # 相对路径的链接目标是相对于链接自身所在目录的
         [[ "$source" == /* ]] || source="$dir/$source"
     done
-    cd "$(dirname "$source")" >/dev/null 2>&1 && pwd -P
+    cd -P -- "$(dirname -- "$source")" >/dev/null 2>&1 && pwd -P
 }
 SCRIPT_DIR=$(resolve_script_dir) || {
     echo "错误：无法确定脚本所在目录。" >&2
