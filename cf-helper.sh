@@ -372,25 +372,25 @@ normalize_hostname() {
     if [[ -z "$stripped" ]]; then
         return 1
     fi
-    if [[ "$stripped" != "$value" ]]; then
-        echo "提示：已从 '$value' 中提取主机名：$stripped"
-        value="$stripped"
-    fi
 
     # 中间的空白同样会让 cloudflared 解析失败。
-    if [[ "$value" == *[[:space:]]* ]]; then
+    if [[ "$stripped" == *[[:space:]]* ]]; then
         return 1
     fi
     # 以 '-' 开头的输入会被下游当成命令行选项。
-    if [[ "$value" == -* ]]; then
+    if [[ "$stripped" == -* ]]; then
         return 1
     fi
     # '@' 会让该值被解析成用户信息而不是主机名（'/' '?' '#' 已在上面剥掉）。
-    if [[ "$value" == *@* ]]; then
+    if [[ "$stripped" == *@* ]]; then
         return 1
     fi
 
-    TUNNEL_HOSTNAME="$value"
+    if [[ "$stripped" != "$value" ]]; then
+        echo "提示：已从 '$value' 中提取主机名：$stripped"
+    fi
+
+    TUNNEL_HOSTNAME="$stripped"
 }
 
 # 循环直到获得一个可用的隧道地址，行为与下面的端口号处理保持一致。
