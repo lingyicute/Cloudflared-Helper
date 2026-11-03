@@ -31,7 +31,7 @@ Cloudflared 连接助手 (cf-helper.sh)
 用法: ./cf-helper.sh [HOSTNAME] [PORT]
 
 参数:
-  HOSTNAME   (可选) 您要连接的隧道地址 (e.g., tunnel.example.com)。
+  HOSTNAME   (可选) 您要连接的隧道域名 (e.g., tunnel.example.com)，不支持 IP 地址。
   PORT       (可选) 本地监听的 TCP 端口 (1-65535)。如果未提供，默认为 21128。
 
 如果未提供任何参数，脚本将以交互模式启动，依次询问所需信息。
@@ -380,10 +380,13 @@ fi
 # 去掉首尾空白并挡掉明显不可能成为主机名的输入。cloudflared 会把该值拼成
 # https://<hostname>，只要含空格就会报 `invalid character " " in host name`
 # 并吐出一大段帮助文本，而复制粘贴时顺手带上空格/换行是非常常见的。
+HOSTNAME_ERROR=""
 normalize_hostname() {
     local value="$1"
     local stripped
-    local hostname_re='^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$'
+    local last_label
+    local hostname_re='^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$'
+    HOSTNAME_ERROR=""
 
     value="${value#"${value%%[![:space:]]*}"}"
     value="${value%"${value##*[![:space:]]}"}"
@@ -394,19 +397,38 @@ normalize_hostname() {
 
     # 直接从浏览器地址栏粘贴 "https://ssh.example.com/" 是最常见的"错误"输入。
     # cloudflared 自己其实也接受带 scheme 的写法，没必要把用户打回去重输：
-    # 自动剥掉 scheme、路径/查询/片段与 FQDN 末尾点号，只保留主机名，并明确告知。
+    # 自动剥掉 scheme、路径/查询/片段、:port 与 FQDN 末尾点号，只保留主机名，并明确告知。
     stripped="$value"
     if [[ "$stripped" =~ ^[A-Za-z][A-Za-z0-9+.-]*:// ]]; then
         stripped="${stripped#*://}"
     fi
     stripped="${stripped%%[/?#]*}"
+
+    # cloudflared 的隧道地址只能是域名，不支持 IP 地址：先拦下 IPv6 字面量。
+    if [[ "$stripped" == \[* ]] || \
+        [[ "$stripped" =~ ^[0-9A-Fa-f:.]+$ && "${stripped//[^:]/}" == ::* ]]; then
+        HOSTNAME_ERROR="ip"
+        return 1
+    fi
+    if [[ "$stripped" =~ ^(.+):[0-9]+$ ]]; then
+        stripped="${BASH_REMATCH[1]}"
+    fi
     stripped="${stripped%.}"
     if [[ -z "$stripped" ]]; then
         return 1
     fi
 
+    # 拦下 IPv4 及其变体：顶级标签（最后一段）全为数字或为 0x 十六进制时，
+    # 它不可能是合法的域名，而是 1.2.3.4、2130706433、0x7f.1 之类的 IP 写法。
+    last_label="${stripped##*.}"
+    if [[ "$last_label" =~ ^[0-9]+$ || "$last_label" =~ ^0[xX][0-9A-Fa-f]*$ ]]; then
+        HOSTNAME_ERROR="ip"
+        return 1
+    fi
+
     # 按 RFC 1123 校验主机名格式：标签仅含字母、数字与连字符，不以连字符起止，
-    # 单标签不超过 63 字符、总长度不超过 253。同时挡掉空格、@、:port、连续点等非法输入。
+    # 单标签不超过 63 字符、总长度不超过 253，且至少两段（如 tunnel.example.com）。
+    # 同时挡掉空格、@、连续点等非法输入。
     if (( ${#stripped} > 253 )) || [[ ! "$stripped" =~ $hostname_re ]]; then
         return 1
     fi
@@ -438,8 +460,10 @@ while true; do
     if ! normalize_hostname "$TUNNEL_HOSTNAME"; then
         if [[ -z "${TUNNEL_HOSTNAME//[[:space:]]/}" ]]; then
             echo "错误：隧道地址不能为空。" >&2
+        elif [[ "$HOSTNAME_ERROR" == "ip" ]]; then
+            echo "错误：隧道地址 '$raw_hostname' 是 IP 地址，cloudflared 不支持 IP 地址，请输入域名。" >&2
         else
-            echo "错误：隧道地址 '$raw_hostname' 含有空格或非法字符，请重新输入。" >&2
+            echo "错误：隧道地址 '$raw_hostname' 不是有效的完整域名（如 tunnel.example.com），请重新输入。" >&2
         fi
         # 输入流已经关闭，无法再次询问。
         if [[ "$hostname_eof" == true ]]; then
