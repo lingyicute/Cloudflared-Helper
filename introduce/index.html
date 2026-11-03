@@ -946,7 +946,8 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const root = document.documentElement;
   // CSS 里的 prefers-reduced-motion 规则管不到 JS 驱动的打字动画和 scrollTo({behavior:'smooth'})，这里单独处理。
-  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  const reduceMotion = () => reduceMotionQuery.matches;
 
   /* ---------- 主题：深色模式 ---------- */
   const themeSwitch = $('#themeSwitch');
@@ -1042,7 +1043,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
   };
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
-  fab.addEventListener('click', () => scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
+  fab.addEventListener('click', () => scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' }));
 
   /* ---------- 移动端底部菜单 ---------- */
   const sheet = $('#sheet'), scrim = $('#sheetScrim'), menuBtn = $('#menuBtn');
@@ -1187,11 +1188,15 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     { t: 'dim',  text: '# 现在用任意客户端连接 localhost:21128 即可，Ctrl+C 断开' },
   ];
   // 用户开启"减少动态效果"时不再逐字打字，直接整段呈现。
-  const sleep = ms => new Promise(r => setTimeout(r, reduceMotion ? 0 : ms));
+  const sleep = ms => new Promise(r => setTimeout(r, reduceMotion() ? 0 : ms));
   let running = 0;
-  async function typeInto(el, text, speed = 55) {
-    if (reduceMotion) { el.textContent += text; return; }
-    for (const ch of text) { el.textContent += ch; await sleep(speed + Math.random() * 40); }
+  async function typeInto(el, text, speed = 55, id = running) {
+    if (reduceMotion()) { el.textContent += text; return; }
+    for (const ch of text) {
+      if (id !== running) return;
+      el.textContent += ch;
+      await sleep(speed + Math.random() * 40);
+    }
   }
   async function play() {
     const id = ++running;
@@ -1204,7 +1209,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
         const c = document.createElement('span'); ln.appendChild(c);
         const cur = document.createElement('span'); cur.className = 't-cursor'; ln.appendChild(cur);
         term.appendChild(ln);
-        await sleep(400); await typeInto(c, line.text); await sleep(350); cur.remove();
+        await sleep(400); await typeInto(c, line.text, 55, id); await sleep(350); cur.remove();
       } else {
         const cls = { info: 't-info', warn: 't-warn', ok: 't-ok', dim: 't-dim', ask: '' }[line.t];
         const label = document.createElement('span'); if (cls) label.className = cls; label.textContent = line.text;
@@ -1212,12 +1217,13 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
         if (line.input !== undefined) {
           const inp = document.createElement('span'); ln.appendChild(inp);
           const cur = document.createElement('span'); cur.className = 't-cursor'; ln.appendChild(cur);
-          await sleep(500); await typeInto(inp, line.input, 70); await sleep(450); cur.remove();
+          await sleep(500); await typeInto(inp, line.input, 70, id); await sleep(450); cur.remove();
         } else {
           await sleep(line.t === 'ok' ? 600 : 380);
         }
       }
     }
+    if (id !== running) return;
     const end = document.createElement('span'); end.className = 'ln';
     end.innerHTML = '<span class="t-prompt">❯ </span><span class="t-cursor"></span>';
     term.appendChild(end);
