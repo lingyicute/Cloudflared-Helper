@@ -522,6 +522,67 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 .sheet a svg { width: 22px; height: 22px; color: var(--primary); }
 </style>
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+<script>
+/* Chrome 111 以前不支持 oklch() / color-mix()，样式会整体失效；此处把它们换算成 rgba() 回填样式表，并随主题色/深浅色切换重算。 */
+(function () {
+  if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(0 0 0)')) return;
+  var root = document.documentElement;
+  var style = document.getElementsByTagName('style')[0];
+  var src = style.textContent;
+  var decls = function (re) {
+    var out = {}, m = re.exec(src);
+    if (m) m[1].replace(/(--[\w-]+)\s*:\s*([^;]+);/g, function (_, k, v) { out[k] = v; });
+    return out;
+  };
+  var light = decls(/:root\s*\{([^}]*)\}/), dark = decls(/html\[data-theme="dark"\]\s*\{([^}]*)\}/);
+  var toRgba = function (L, C, H) {
+    var r = H * Math.PI / 180, a = C * Math.cos(r), b = C * Math.sin(r);
+    var l = Math.pow(L + 0.3963377774 * a + 0.2158037573 * b, 3);
+    var m = Math.pow(L - 0.1055613458 * a - 0.0638541728 * b, 3);
+    var s = Math.pow(L - 0.0894841775 * a - 1.291485548 * b, 3);
+    return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+            -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s].map(function (c) {
+      c = Math.max(0, Math.min(1, c));
+      return Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055));
+    });
+  };
+  var rgba = function (args, k) {
+    var p = args.split('/'), n = p[0].trim().split(/\s+/).map(Number), c = toRgba(n[0], n[1], n[2]);
+    return 'rgba(' + c.join(',') + ',' + +((p[1] ? Number(p[1]) : 1) * k).toFixed(3) + ')';
+  };
+  var sub = function (s, h) {
+    return s.replace(/var\((--[\w-]+)\)/g, function (all, k) {
+      return k === '--h' ? h : k === '--t' ? h + 60 : k in light ? light[k] : all;
+    });
+  };
+  var last;
+  var refresh = function () {
+    var h = parseFloat(root.style.getPropertyValue('--h'));
+    if (isNaN(h)) h = parseFloat(light['--h']) || 0;
+    var isDark = root.getAttribute('data-theme') === 'dark';
+    if (last === h + (isDark ? 'd' : 'l')) return;
+    last = h + (isDark ? 'd' : 'l');
+    style.textContent = src
+      .replace(/color-mix\(in oklch,\s*var\((--[\w-]+)\)\s*([\d.]+)%,\s*transparent\)/g, function (_, name, pct) {
+        var v = (isDark && dark[name]) || light[name];
+        return rgba(sub(/oklch\((.*)\)/.exec(v)[1], h), pct / 100);
+      })
+      .replace(/oklch\(((?:[^()]|\([^()]*\))*)\)/g, function (all, args) {
+        args = sub(args, h);
+        return args.indexOf('var(') < 0 ? rgba(args, 1) : all;
+      });
+  };
+  refresh();
+  if (window.MutationObserver) new MutationObserver(refresh).observe(root, { attributes: true, attributeFilter: ['style', 'data-theme'] });
+  // 色板按钮用 --sw 行内变量取色，无法在样式表里静态换算，直接写到元素上。
+  document.addEventListener('DOMContentLoaded', function () {
+    [].forEach.call(document.querySelectorAll('.swatch[data-h]'), function (el) {
+      el.style.background = rgba('0.6 0.15 ' + el.getAttribute('data-h'), 1);
+    });
+  });
+})();
+</script>
 </head>
 <body>
 
