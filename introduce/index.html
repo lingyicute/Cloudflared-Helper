@@ -146,6 +146,8 @@ code, pre, .mono { font-family: 'Nebulove', ui-monospace, 'JetBrains Mono', 'Cas
 
 .container { width: min(1180px, 100% - 2.5rem); margin-inline: auto; }
 section { padding-block: clamp(3.5rem, 8vw, 6.5rem); scroll-margin-top: 80px; }
+/* 品牌链接跳转到 #top（main）：不扣除粘性顶栏的 68px，页面会停在 scrollY=68 而不是真正的顶部，窄屏下还会遮住 Hero 首行。 */
+main { scroll-margin-top: 68px; }
 .section-head { max-width: 640px; margin-bottom: 2.5rem; }
 .section-head .eyebrow {
   display: inline-flex; align-items: center; gap: .5rem;
