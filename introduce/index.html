@@ -386,6 +386,8 @@ html[data-theme="dark"] .feature-card kbd { background: oklch(1 0 0 / .1); }
 
 /* ---------- 用法 ---------- */
 .usage-layout { display: grid; grid-template-columns: 340px 1fr; gap: 2rem; align-items: start; }
+/* 网格项默认 min-width:auto，pre 里不换行的长命令会把整列撑出窄屏视口；归零后改由 .code-block 自身横向滚动。 */
+.usage-layout > * { min-width: 0; }
 .steps { display: grid; gap: .75rem; position: sticky; top: 90px; }
 .step { display: flex; gap: 1rem; padding: 1.1rem 1.25rem; border-radius: var(--r-lg); background: var(--surface-container-low); align-items: flex-start; }
 .step-num { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-weight: 700; font-size: .95rem; }
