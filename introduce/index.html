@@ -523,9 +523,22 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 </style>
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <script>
-/* Chrome 111 以前不支持 oklch() / color-mix()，样式会整体失效；此处把它们换算成 rgba() 回填样式表，并随主题色/深浅色切换重算。 */
+/* 在首帧渲染前同步主题与种子色，避免深色模式或自定义色相闪烁及重复触发 polyfill。 */
 (function () {
-  if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(0 0 0)')) return;
+  var root = document.documentElement;
+  var read = function (k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } };
+  var savedTheme = read('cfh-theme');
+  var dark = savedTheme === 'dark' ? true : savedTheme === 'light' ? false : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var rawHue = read('cfh-hue');
+  var n = rawHue === null ? NaN : parseFloat(rawHue);
+  if (isFinite(n)) root.style.setProperty('--h', ((n % 360) + 360) % 360);
+})();
+</script>
+<script>
+/* Chrome 111 以前或 Safari 15.4-16.1 不支持 oklch() / color-mix()，样式会部分或整体失效；此处把它们换算成 rgba() 回填样式表，并随主题色/深浅色切换重算。 */
+(function () {
+  if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(0 0 0)') && CSS.supports('color', 'color-mix(in oklch, red 50%, transparent)')) return;
   var root = document.documentElement;
   var style = document.getElementsByTagName('style')[0];
   var src = style.textContent;
@@ -551,9 +564,9 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     var p = args.split('/'), n = p[0].trim().split(/\s+/).map(Number), c = toRgba(n[0], n[1], n[2]);
     return 'rgba(' + c.join(',') + ',' + +((p[1] ? Number(p[1]) : 1) * k).toFixed(3) + ')';
   };
-  var sub = function (s, h) {
+  var sub = function (s, h, isDark) {
     return s.replace(/var\((--[\w-]+)\)/g, function (all, k) {
-      return k === '--h' ? h : k === '--t' ? h + 60 : k in light ? light[k] : all;
+      return k === '--h' ? h : k === '--t' ? h + 60 : (isDark && k in dark) ? dark[k] : k in light ? light[k] : all;
     });
   };
   var last;
@@ -564,12 +577,13 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     if (last === h + (isDark ? 'd' : 'l')) return;
     last = h + (isDark ? 'd' : 'l');
     style.textContent = src
-      .replace(/color-mix\(in oklch,\s*var\((--[\w-]+)\)\s*([\d.]+)%,\s*transparent\)/g, function (_, name, pct) {
+      .replace(/color-mix\(in oklch,\s*var\((--[\w-]+)\)\s*([\d.]+)%,\s*transparent\)/g, function (all, name, pct) {
         var v = (isDark && dark[name]) || light[name];
-        return rgba(sub(/oklch\((.*)\)/.exec(v)[1], h), pct / 100);
+        var m = v && /oklch\((.*)\)/.exec(v);
+        return m ? rgba(sub(m[1], h, isDark), pct / 100) : all;
       })
       .replace(/oklch\(((?:[^()]|\([^()]*\))*)\)/g, function (all, args) {
-        args = sub(args, h);
+        args = sub(args, h, isDark);
         return args.indexOf('var(') < 0 ? rgba(args, 1) : all;
       });
   };
@@ -1031,34 +1045,44 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   const writeSetting = (key, value) => {
     try { storage?.setItem(key, value); } catch { /* storage is optional */ }
   };
-  const applyTheme = (dark) => {
-    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const syncThemeSwitch = (dark) => {
     themeSwitch.setAttribute('aria-checked', String(dark));
   };
-  const savedTheme = readSetting('cfh-theme');
-  applyTheme(savedTheme ? savedTheme === 'dark' : prefersDark.matches);
+  const applyTheme = (dark) => {
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    syncThemeSwitch(dark);
+  };
+  syncThemeSwitch(root.getAttribute('data-theme') === 'dark');
   themeSwitch.addEventListener('click', () => {
     const dark = themeSwitch.getAttribute('aria-checked') !== 'true';
     applyTheme(dark);
     writeSetting('cfh-theme', dark ? 'dark' : 'light');
   });
-  const onPreferredThemeChange = e => { if (!readSetting('cfh-theme')) applyTheme(e.matches); };
+  const onPreferredThemeChange = e => {
+    const saved = readSetting('cfh-theme');
+    if (saved !== 'dark' && saved !== 'light') applyTheme(e.matches);
+  };
   if (prefersDark.addEventListener) prefersDark.addEventListener('change', onPreferredThemeChange);
   else if (prefersDark.addListener) prefersDark.addListener(onPreferredThemeChange);
 
   /* ---------- 主题：动态种子色 ---------- */
   const paletteBtn = $('#paletteBtn'), paletteMenu = $('#paletteMenu');
-  const applyHue = (h) => {
-    root.style.setProperty('--h', h);
-    $$('.swatch').forEach(s => {
-      const active = s.dataset.h === String(h);
+  const swatches = $$('.swatch');
+  const syncHueUI = (h) => {
+    const key = String(h);
+    swatches.forEach(s => {
+      const active = s.dataset.h === key;
       s.classList.toggle('active', active);
       s.setAttribute('aria-pressed', String(active));
     });
   };
+  const applyHue = (h) => {
+    root.style.setProperty('--h', h);
+    syncHueUI(h);
+  };
   // localStorage 里的值可能被手改或来自旧版本；非法的 --h 会让所有 oklch() 颜色失效、整页变成无样式的黑白。
   const parseHue = (v) => { const n = Number.parseFloat(v); return Number.isFinite(n) ? ((n % 360) + 360) % 360 : null; };
-  applyHue(parseHue(readSetting('cfh-hue')) ?? 60);
+  syncHueUI(parseHue(root.style.getPropertyValue('--h')) ?? 60);
   const setPaletteOpen = (open) => {
     paletteMenu.classList.toggle('open', open);
     paletteBtn.setAttribute('aria-expanded', String(open));
