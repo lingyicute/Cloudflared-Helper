@@ -1194,8 +1194,8 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   const scheduleMeasure = () => {
     if (!resizeRaf) resizeRaf = requestAnimationFrame(() => { resizeRaf = 0; measureLayout(); updateScroll(); });
   };
-  measureLayout();
-  updateScroll();
+  // 首次测量交给 rAF：在这里同步读取布局会强制重排，而稍后插入终端占位层又会让结果作废、再排一次。
+  scheduleMeasure();
   addEventListener('scroll', scheduleScroll, { passive: true });
   addEventListener('resize', scheduleMeasure, { passive: true });
   addEventListener('load', scheduleMeasure);
