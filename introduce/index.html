@@ -1390,11 +1390,15 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   let running = 0;
   let termTimer = 0;
   let termResolve = null;
+  // 终端滚出视口后暂停打字：termArm 保存尚未走完的那一步，回到视口时重新计时，离屏期间不再改写 DOM。
+  let termVisible = true;
+  let termArm = null;
   const cancelTermWait = () => {
     if (termTimer) {
       clearTimeout(termTimer);
       termTimer = 0;
     }
+    termArm = null;
     if (termResolve) {
       const resolve = termResolve;
       termResolve = null;
@@ -1406,12 +1410,25 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     if (id !== running) { resolve(false); return; }
     if (reduceMotion()) { resolve(true); return; }
     termResolve = resolve;
-    termTimer = setTimeout(() => {
-      termTimer = 0;
-      termResolve = null;
-      resolve(id === running);
-    }, ms);
+    termArm = () => {
+      termTimer = setTimeout(() => {
+        termTimer = 0;
+        termResolve = null;
+        termArm = null;
+        resolve(id === running);
+      }, ms);
+    };
+    if (termVisible) termArm();
   });
+  const setTermVisible = (visible) => {
+    termVisible = visible;
+    if (!visible && termTimer) {
+      clearTimeout(termTimer);
+      termTimer = 0;
+    } else if (visible && termArm && !termTimer) {
+      termArm();
+    }
+  };
   function createTermLine(line, withCursor) {
     const ln = document.createElement('span');
     ln.className = 'ln';
@@ -1526,6 +1543,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     const termIO = new IntersectionObserver((en) => {
       const entry = en[en.length - 1];
       termCard?.classList.toggle('paused', !entry.isIntersecting);
+      setTermVisible(entry.isIntersecting);
       if (!termPlayed && entry.isIntersecting && (entry.intersectionRatio >= 0.3 || entry.intersectionRect.height >= 120)) {
         termPlayed = true;
         play();
