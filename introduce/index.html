@@ -398,10 +398,13 @@ html[data-theme="dark"] .feature-card kbd { background: oklch(1 0 0 / .1); }
 /* 分段按钮 */
 .segmented { display: inline-flex; border: 1px solid var(--outline); border-radius: var(--r-full); overflow: hidden; margin-bottom: 1.25rem; }
 .segmented button {
-  height: 40px; padding: 0 1.25rem; border: none; background: transparent; color: var(--on-surface); font: inherit; font-weight: 600; font-size: .9rem;
+  height: 40px; padding: 0 1.25rem; border: none; border-radius: 0; background: transparent; color: var(--on-surface); font: inherit; font-weight: 600; font-size: .9rem;
   cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; transition: background-color .25s, color .25s; border-right: 1px solid var(--outline);
 }
-.segmented button:last-child { border-right: none; }
+.segmented button:first-child { border-radius: var(--r-full) 0 0 var(--r-full); }
+.segmented button:last-child { border-right: none; border-radius: 0 var(--r-full) var(--r-full) 0; }
+/* 焦点环默认向外偏移 2px，会被 .segmented 的 overflow:hidden 裁到只剩两侧竖线；改为贴着按钮内缘描边，圆角与胶囊两端保持一致。 */
+.segmented button:focus-visible { outline-offset: -3px; }
 .segmented button svg { width: 0; height: 18px; opacity: 0; transition: width .25s var(--ease-emph), opacity .2s; }
 .segmented button[aria-selected="true"] { background: var(--secondary-container); color: var(--on-secondary-container); }
 .segmented button[aria-selected="true"] svg { width: 18px; opacity: 1; }
