@@ -305,7 +305,11 @@ html[data-theme="dark"] .terminal { background: var(--surface-container-lowest);
 .terminal-bar i:nth-child(2) { background: oklch(0.85 0.16 90); }
 .terminal-bar i:nth-child(3) { background: oklch(0.75 0.17 150); }
 .terminal-bar span { margin-left: auto; font-size: .75rem; opacity: .6; }
-.terminal-body { padding: 1.25rem 1.4rem 1.5rem; min-height: 300px; line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
+.terminal-body { display: grid; align-content: start; padding: 1.25rem 1.4rem 3.5rem; min-height: 300px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: break-word; overflow-wrap: anywhere; }
+/* 隐形的整段脚本与逐字播放层叠在同一格，容器高度始终等于完整输出，随断点/字体加载自动适配，播放过程中不再撑高页面。 */
+.terminal-body > * { grid-area: 1 / 1; min-width: 0; }
+.term-sizer { visibility: hidden; pointer-events: none; user-select: none; }
+.term-sizer > span { display: block; }
 .terminal-body .ln { display: block; opacity: 0; transform: translateY(4px); animation: lineIn .35s var(--ease-std) forwards; }
 @keyframes lineIn { to { opacity: 1; transform: none; } }
 .t-prompt { color: var(--inverse-primary); font-weight: 700; }
@@ -318,8 +322,7 @@ html[data-theme="dark"] .t-prompt { color: var(--primary); }
 @keyframes blink { 50% { opacity: 0; } }
 .terminal-replay {
   position: absolute; right: 1rem; bottom: 1rem; height: 36px; padding: 0 .9rem; border-radius: var(--r-full); border: none; cursor: pointer;
-  background: oklch(1 0 0 / .1); color: inherit; font: inherit; font-size: .8rem; font-weight: 600; display: inline-flex; align-items: center; gap: .4rem;
-  backdrop-filter: blur(6px);
+  background: oklch(1 0 0 / .14); color: inherit; font: inherit; font-size: .8rem; font-weight: 600; display: inline-flex; align-items: center; gap: .4rem;
 }
 .terminal-replay svg { width: 16px; height: 16px; }
 
@@ -1109,11 +1112,12 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     e.stopPropagation();
     setPaletteOpen(!paletteMenu.classList.contains('open'));
   });
-  swatches.forEach(s => s.addEventListener('click', () => {
+  swatches.forEach(s => s.addEventListener('click', (e) => {
     applyHue(s.dataset.h);
     writeSetting('cfh-hue', s.dataset.h);
     // 色板位于 #paletteMenu 内部，下面的点击外部关闭逻辑不会命中它，需在此显式收起。
     setPaletteOpen(false);
+    if (e.detail === 0) paletteBtn.focus();
     showSnack(`主题色已切换为「${s.title}」`);
   }));
   document.addEventListener('click', (e) => {
@@ -1209,7 +1213,11 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     scrim.classList.toggle('open', open);
     menuBtn.setAttribute('aria-expanded', String(open));
   };
-  menuBtn.addEventListener('click', () => { setPaletteOpen(false); toggleSheet(true); });
+  menuBtn.addEventListener('click', (e) => {
+    setPaletteOpen(false);
+    toggleSheet(true);
+    if (e.detail === 0) $('a', sheet)?.focus();
+  });
   scrim.addEventListener('click', () => toggleSheet(false));
   $$('a', sheet).forEach(a => a.addEventListener('click', () => toggleSheet(false)));
   const onMobileChange = e => { if (!e.matches && sheet.classList.contains('open')) toggleSheet(false); };
@@ -1297,8 +1305,7 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.setAttribute('readonly', '');
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
     document.body.appendChild(ta);
     let copied = false;
     try {
@@ -1354,8 +1361,10 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
       if (card) {
         card.classList.add('recommended');
         $('#detectNote').textContent = ` 检测到你的设备可能是 ${platformNames[platform]} ${names[arch]}，已为你高亮推荐。`;
+        return;
       }
-    } else if (platform === 'darwin') {
+    }
+    if (platform === 'darwin') {
       $('#detectNote').textContent = ' 检测到 macOS，但浏览器无法可靠判断 CPU 架构，请根据「关于本机」手动选择 Apple Silicon 或 Intel 发行包。';
     }
   })();
@@ -1377,46 +1386,131 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     { t: 'dim',  text: '# 现在用任意客户端连接 localhost:21128 即可，Ctrl+C 断开' },
   ];
   // 用户开启"减少动态效果"时不再逐字打字，直接整段呈现。
-  const sleep = ms => new Promise(r => setTimeout(r, reduceMotion() ? 0 : ms));
   let running = 0;
-  async function typeInto(el, text, speed = 55, id = running) {
-    if (id !== running) return;
-    if (reduceMotion()) { el.textContent += text; return; }
-    for (const ch of text) {
-      if (id !== running) return;
-      el.textContent += ch;
-      await sleep(speed + Math.random() * 40);
+  let termTimer = 0;
+  let termResolve = null;
+  const cancelTermWait = () => {
+    if (termTimer) {
+      clearTimeout(termTimer);
+      termTimer = 0;
     }
+    if (termResolve) {
+      const resolve = termResolve;
+      termResolve = null;
+      resolve(false);
+    }
+  };
+  const wait = (ms, id) => new Promise(resolve => {
+    cancelTermWait();
+    if (id !== running) { resolve(false); return; }
+    if (reduceMotion()) { resolve(true); return; }
+    termResolve = resolve;
+    termTimer = setTimeout(() => {
+      termTimer = 0;
+      termResolve = null;
+      resolve(id === running);
+    }, ms);
+  });
+  function createTermLine(line, withCursor) {
+    const ln = document.createElement('span');
+    ln.className = 'ln';
+    if (line.t === 'cmd') {
+      const prompt = document.createElement('span');
+      prompt.className = 't-prompt';
+      prompt.textContent = '❯ ';
+      const c = document.createElement('span');
+      ln.appendChild(prompt);
+      ln.appendChild(c);
+      if (withCursor) {
+        const cur = document.createElement('span');
+        cur.className = 't-cursor';
+        ln.appendChild(cur);
+        return { ln, target: c, cur };
+      }
+      c.textContent = line.text;
+      return { ln };
+    }
+    const cls = { info: 't-info', warn: 't-warn', ok: 't-ok', dim: 't-dim', ask: '' }[line.t];
+    const label = document.createElement('span');
+    if (cls) label.className = cls;
+    label.textContent = line.text;
+    ln.appendChild(label);
+    if (line.input !== undefined) {
+      const inp = document.createElement('span');
+      ln.appendChild(inp);
+      if (withCursor) {
+        const cur = document.createElement('span');
+        cur.className = 't-cursor';
+        ln.appendChild(cur);
+        return { ln, target: inp, cur };
+      }
+      inp.textContent = line.input;
+    }
+    return { ln };
+  }
+  const live = document.createElement('div');
+  live.className = 'term-live';
+  const sizer = document.createElement('div');
+  sizer.className = 'term-sizer';
+  sizer.setAttribute('aria-hidden', 'true');
+  for (const line of script) {
+    const { ln } = createTermLine(line, false);
+    ln.className = '';
+    sizer.appendChild(ln);
+  }
+  const sizerEnd = document.createElement('span');
+  sizerEnd.textContent = '❯ ';
+  sizer.appendChild(sizerEnd);
+  term.append(sizer, live);
+  async function typeInto(el, text, speed = 55, id = running) {
+    if (id !== running) return false;
+    if (reduceMotion()) { el.textContent += text; return true; }
+    const tn = document.createTextNode('');
+    el.appendChild(tn);
+    for (const ch of text) {
+      if (!(await wait(speed + Math.random() * 40, id))) return false;
+      tn.data += ch;
+    }
+    return id === running;
   }
   async function play() {
     const id = ++running;
-    term.innerHTML = '';
+    cancelTermWait();
+    if (reduceMotion()) {
+      const frag = document.createDocumentFragment();
+      for (const line of script) frag.appendChild(createTermLine(line, false).ln);
+      const end = document.createElement('span');
+      end.className = 'ln';
+      end.innerHTML = '<span class="t-prompt">❯ </span><span class="t-cursor"></span>';
+      frag.appendChild(end);
+      live.textContent = '';
+      live.appendChild(frag);
+      return;
+    }
+    live.textContent = '';
     for (const line of script) {
       if (id !== running) return;
-      const ln = document.createElement('span'); ln.className = 'ln';
+      const { ln, target, cur } = createTermLine(line, true);
+      live.appendChild(ln);
       if (line.t === 'cmd') {
-        ln.innerHTML = '<span class="t-prompt">❯ </span>';
-        const c = document.createElement('span'); ln.appendChild(c);
-        const cur = document.createElement('span'); cur.className = 't-cursor'; ln.appendChild(cur);
-        term.appendChild(ln);
-        await sleep(400); await typeInto(c, line.text, 55, id); await sleep(350); cur.remove();
+        if (!(await wait(400, id))) return;
+        if (!(await typeInto(target, line.text, 55, id))) return;
+        if (!(await wait(350, id))) return;
+        cur.remove();
+      } else if (line.input !== undefined) {
+        if (!(await wait(500, id))) return;
+        if (!(await typeInto(target, line.input, 70, id))) return;
+        if (!(await wait(450, id))) return;
+        cur.remove();
       } else {
-        const cls = { info: 't-info', warn: 't-warn', ok: 't-ok', dim: 't-dim', ask: '' }[line.t];
-        const label = document.createElement('span'); if (cls) label.className = cls; label.textContent = line.text;
-        ln.appendChild(label); term.appendChild(ln);
-        if (line.input !== undefined) {
-          const inp = document.createElement('span'); ln.appendChild(inp);
-          const cur = document.createElement('span'); cur.className = 't-cursor'; ln.appendChild(cur);
-          await sleep(500); await typeInto(inp, line.input, 70, id); await sleep(450); cur.remove();
-        } else {
-          await sleep(line.t === 'ok' ? 600 : 380);
-        }
+        if (!(await wait(line.t === 'ok' ? 600 : 380, id))) return;
       }
     }
     if (id !== running) return;
-    const end = document.createElement('span'); end.className = 'ln';
+    const end = document.createElement('span');
+    end.className = 'ln';
     end.innerHTML = '<span class="t-prompt">❯ </span><span class="t-cursor"></span>';
-    term.appendChild(end);
+    live.appendChild(end);
   }
   $('#replayBtn').addEventListener('click', play);
   const heroSection = $('.hero');
@@ -1424,12 +1518,12 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   if ('IntersectionObserver' in window) {
     if (heroSection) {
       new IntersectionObserver((en) => {
-        heroSection.classList.toggle('paused', !en[0].isIntersecting);
+        heroSection.classList.toggle('paused', !en[en.length - 1].isIntersecting);
       }, { threshold: 0 }).observe(heroSection);
     }
     let termPlayed = false;
     const termIO = new IntersectionObserver((en) => {
-      const entry = en[0];
+      const entry = en[en.length - 1];
       termCard?.classList.toggle('paused', !entry.isIntersecting);
       if (!termPlayed && entry.isIntersecting && (entry.intersectionRatio >= 0.3 || entry.intersectionRect.height >= 120)) {
         termPlayed = true;
