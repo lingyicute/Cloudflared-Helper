@@ -532,6 +532,9 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
 }
 @media (max-width: 440px) {
   .brand-name { display: none; }
+  /* 色板菜单宽 256px、右缘对齐调色板按钮，视口窄于 428px 时左侧色板会被挤出屏幕；改为相对顶栏靠右定位。 */
+  .palette-picker { position: static; }
+  .palette-menu { right: 1.25rem; top: calc(100% - 4px); }
 }
 
 /* 移动端导航抽屉（Bottom sheet） */
