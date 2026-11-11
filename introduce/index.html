@@ -1169,7 +1169,10 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     docHeight = root.scrollHeight;
   };
   const updateScroll = () => {
-    scrollRaf = 0;
+    if (scrollRaf) {
+      cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+    }
     const y = scrollY;
     const scrolled = y > 8;
     const showFab = y > 600;
@@ -1234,6 +1237,9 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
   const onMobileChange = e => { if (!e.matches && sheet.classList.contains('open')) toggleSheet(false); };
   if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', onMobileChange);
   else if (mobileQuery.addListener) mobileQuery.addListener(onMobileChange);
+  document.addEventListener('focusin', (e) => {
+    if (sheet.classList.contains('open') && !sheet.contains(e.target) && !menuBtn.contains(e.target)) toggleSheet(false);
+  });
   // Esc 关闭浮层，并把焦点交还给打开它的按钮（WAI-ARIA 对话框/菜单的基本约定）。
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -1351,14 +1357,18 @@ footer .links a:hover { background: var(--surface-container-high); color: var(--
     if (!appleMobile && /macOS|Macintosh|Mac OS X|MacIntel/i.test(platformText)) platform = 'darwin';
     else if (!appleMobile && /Linux|Android/i.test(platformText)) platform = 'linux';
 
+    let gotEntropy = false;
     try {
       if (navigator.userAgentData?.getHighEntropyValues) {
         const d = await navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness']);
-        if (d.architecture === 'arm') arch = d.bitness === '64' ? 'arm64' : 'arm';
-        else if (d.architecture === 'x86' && d.bitness === '64') arch = 'amd64';
+        if (d.architecture) {
+          gotEntropy = true;
+          if (d.architecture === 'arm') arch = d.bitness === '64' ? 'arm64' : 'arm';
+          else if (d.architecture === 'x86' && d.bitness === '64') arch = 'amd64';
+        }
       }
     } catch {}
-    if (!arch) {
+    if (!arch && !gotEntropy) {
       // armv8l 是 64 位内核上的 32 位用户态，cf-helper.sh 也把它归为 arm，这里保持一致。
       if (/aarch64|arm64|armv8(?!l)/i.test(platformText)) arch = 'arm64';
       else if (/armv[5-8]/i.test(platformText)) arch = 'arm';
