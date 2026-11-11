@@ -34,16 +34,18 @@ jobs:
         run: python -m pip install fonttools brotli
 
       - name: Generate cacheable font subsets
+        env:
+          COMMIT_NAME: ${{ github.actor }}
+          COMMIT_EMAIL: ${{ github.event.pusher.email || format('{0}@users.noreply.github.com', github.actor) }}
         run: |
+          git config user.name "$COMMIT_NAME"
+          git config user.email "$COMMIT_EMAIL"
           # 排队等待 concurrency 锁期间，前一次运行可能已向远端推送过字体提交；
           # 先同步到远端最新提交再生成子集，避免后续变基时在 woff2 二进制与缓存 JSON 上冲突。
           git pull --rebase origin "${GITHUB_REF_NAME}"
           python introduce/subset_font.py
 
       - name: Commit font updates
-        env:
-          COMMIT_NAME: ${{ github.actor }}
-          COMMIT_EMAIL: ${{ github.event.pusher.email || format('{0}@users.noreply.github.com', github.actor) }}
         run: |
           git fetch origin "${GITHUB_REF_NAME}"
           if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/${GITHUB_REF_NAME}")" ]]; then
@@ -56,7 +58,5 @@ jobs:
             echo "No font changes detected."
             exit 0
           fi
-          git config user.name "$COMMIT_NAME"
-          git config user.email "$COMMIT_EMAIL"
           git commit -m "perf: 更新字体子集 [no ci]"
           git push origin "HEAD:${GITHUB_REF_NAME}"
