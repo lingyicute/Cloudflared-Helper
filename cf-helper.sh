@@ -188,6 +188,7 @@ trap 'exit 129' HUP
 download_file() {
     local url="$1"
     local destination="$2"
+    local mode="${3:-}"
 
     if ! DOWNLOAD_TMP=$(mktemp "${destination}.tmp.XXXXXX"); then
         echo "错误：无法在目标目录创建临时文件：$destination" >&2
@@ -227,6 +228,13 @@ download_file() {
         return 1
     fi
 
+    if [[ "$mode" == "+x" ]] && ! chmod +x "$tmp_file"; then
+        echo "错误：无法为下载的文件设置可执行权限：$destination" >&2
+        rm -f "$tmp_file"
+        DOWNLOAD_TMP=""
+        return 1
+    fi
+
     if ! mv -f "$tmp_file" "$destination"; then
         echo "错误：无法将下载结果写入 '$destination'。" >&2
         rm -f "$tmp_file"
@@ -242,13 +250,18 @@ download_file() {
 #   - 也可能早就通过 brew / apt 安装到了 PATH 里。
 find_existing_cloudflared() {
     local candidate
+    local candidates
     if [[ -f "$SCRIPT_DIR/cloudflared" && -s "$SCRIPT_DIR/cloudflared" && ! "$SCRIPT_DIR/cloudflared" -ef "${BASH_SOURCE[0]}" ]]; then
         printf '%s\n' "$SCRIPT_DIR/cloudflared"
         return 0
     fi
-    if candidate=$(type -P cloudflared 2>/dev/null) && [[ -n "$candidate" && -f "$candidate" && -s "$candidate" && -x "$candidate" && ! "$candidate" -ef "${BASH_SOURCE[0]}" ]]; then
-        printf '%s\n' "$candidate"
-        return 0
+    if candidates=$(type -aP cloudflared 2>/dev/null); then
+        while IFS= read -r candidate; do
+            if [[ -n "$candidate" && -f "$candidate" && -s "$candidate" && -x "$candidate" && ! "$candidate" -ef "${BASH_SOURCE[0]}" ]]; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+        done <<< "$candidates"
     fi
     return 1
 }
@@ -291,7 +304,7 @@ if [[ "$KNOWN_PLATFORM" == true ]]; then
                     exit 1
                 fi
                 if ! tar -xzf "$ARCHIVE_PATH" -C "$EXTRACT_DIR" || \
-                    [[ ! -f "$EXTRACT_DIR/cloudflared" || ! -s "$EXTRACT_DIR/cloudflared" ]]; then
+                    [[ -L "$EXTRACT_DIR/cloudflared" || ! -f "$EXTRACT_DIR/cloudflared" || ! -s "$EXTRACT_DIR/cloudflared" ]]; then
                     echo "错误：下载的 macOS cloudflared 压缩包格式无效。" >&2
                     exit 1
                 fi
@@ -303,7 +316,7 @@ if [[ "$KNOWN_PLATFORM" == true ]]; then
                 rm -rf "$EXTRACT_DIR"
                 EXTRACT_DIR=""
             else
-                if ! download_file "$DOWNLOAD_URL" "$CLOUDFLARED_BINARY"; then
+                if ! download_file "$DOWNLOAD_URL" "$CLOUDFLARED_BINARY" "+x"; then
                     echo "错误：下载失败。请检查网络连接或下载链接。" >&2
                     exit 1
                 fi
@@ -372,9 +385,13 @@ echo ""
 # -- 获取 Hostname --
 # 不用 HOSTNAME 作变量名：它是 bash 自动设置的内建变量（本机主机名），在 Docker 等
 # 环境里还是导出的环境变量，覆盖它既容易让读代码的人误解，也会把值泄露给子进程。
+has_hostname_arg=false
 TUNNEL_HOSTNAME="${1:-}"
-if [[ -n "$TUNNEL_HOSTNAME" ]]; then
-    echo "已从命令行参数获取隧道地址: $TUNNEL_HOSTNAME"
+if (( $# >= 1 )); then
+    has_hostname_arg=true
+    if [[ -n "${TUNNEL_HOSTNAME//[[:space:]]/}" ]]; then
+        echo "已从命令行参数获取隧道地址: $TUNNEL_HOSTNAME"
+    fi
 fi
 
 # 去掉首尾空白并挡掉明显不可能成为主机名的输入。cloudflared 会把该值拼成
@@ -404,9 +421,9 @@ normalize_hostname() {
     fi
     stripped="${stripped%%[/?#]*}"
 
-    # cloudflared 的隧道地址只能是域名，不支持 IP 地址：先拦下 IPv6 字面量。
+    # cloudflared 的隧道地址只能是域名，不支持 IP 地址：先拦下 IPv6 字面量（含 %zone 区域索引）。
     if [[ "$stripped" == \[* ]] || \
-        [[ "$stripped" =~ ^[0-9A-Fa-f:.]+$ && "${stripped//[^:]/}" == ::* ]]; then
+        [[ "${stripped%%%*}" =~ ^[0-9A-Fa-f:.]+$ && "${stripped//[^:]/}" == ::* ]]; then
         HOSTNAME_ERROR="ip"
         return 1
     fi
@@ -444,12 +461,14 @@ normalize_hostname() {
 hostname_retry=false
 hostname_eof=false
 while true; do
-    if [[ -z "$TUNNEL_HOSTNAME" ]]; then
+    if [[ "$has_hostname_arg" == true ]]; then
+        has_hostname_arg=false
+    elif [[ -z "$TUNNEL_HOSTNAME" ]]; then
         if ! IFS= read -r -p "请输入隧道地址 (hostname): " TUNNEL_HOSTNAME; then
             # 输入流提前结束（如管道输入末尾无换行符）时保留已读取到的内容。
             hostname_eof=true
             echo
-            if [[ -z "$TUNNEL_HOSTNAME" && "$hostname_retry" == true ]]; then
+            if [[ -z "${TUNNEL_HOSTNAME//[[:space:]]/}" && "$hostname_retry" == true ]]; then
                 echo "错误：未能读取隧道地址。" >&2
                 exit 1
             fi
@@ -477,9 +496,15 @@ while true; do
 done
 
 # -- 获取并验证 Port --
+has_port_arg=false
+port_allow_default=true
 PORT="${2:-}"
-if [[ -n "$PORT" ]]; then
-    echo "已从命令行参数获取本地监听端口: $PORT"
+if (( $# >= 2 )); then
+    has_port_arg=true
+    port_allow_default=false
+    if [[ -n "${PORT//[[:space:]]/}" ]]; then
+        echo "已从命令行参数获取本地监听端口: $PORT"
+    fi
 fi
 
 normalize_port() {
@@ -502,16 +527,17 @@ normalize_port() {
 # 循环直到获得一个有效的端口号。
 # port_allow_default：只有"从未提供过端口"时，输入流结束才回落到默认端口。
 # 用户明确给过端口却无效时，不应该悄悄换成另一个端口连上去。
-port_allow_default=true
 port_eof=false
 while true; do
-    if [[ -z "$PORT" ]]; then
+    if [[ "$has_port_arg" == true ]]; then
+        has_port_arg=false
+    elif [[ -z "$PORT" ]]; then
         if ! IFS= read -r -p "请输入本地监听端口 [$DEFAULT_PORT]: " PORT; then
             # 输入流提前结束（管道末尾缺少换行符，或用户直接按下 Ctrl-D）：
             # 已读取到的内容照常校验；什么都没读到就按提示采用默认端口。
             port_eof=true
             echo
-            if [[ -z "$PORT" && "$port_allow_default" != true ]]; then
+            if [[ -z "${PORT//[[:space:]]/}" && "$port_allow_default" != true ]]; then
                 echo "错误：未能读取端口号。" >&2
                 exit 1
             fi
